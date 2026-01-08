@@ -1,0 +1,62 @@
+[
+    {
+        "id": "1",
+        "name": "The Fool",
+        "image_url": "https://upload.wikimedia.org/wikipedia/en/9/90/RWS_Tarot_00_Fool.jpg",
+        "description": "New beginnings, optimism, trust in life."
+    },
+    {
+        "id": "2",
+        "name": "The Magician",
+        "image_url": "https://upload.wikimedia.org/wikipedia/en/d/de/RWS_Tarot_01_Magician.jpg",
+        "description": "Action, the power to manifest."
+    },
+    {
+        "id": "3",
+        "name": "The High Priestess",
+        "image_url": "https://upload.wikimedia.org/wikipedia/en/8/88/RWS_Tarot_02_High_Priestess.jpg",
+        "description": "Inaction, going within, the subconscious."
+    },
+    {
+        "id": "4",
+        "name": "The Empress",
+        "image_url": "https://upload.wikimedia.org/wikipedia/en/d/d2/RWS_Tarot_03_Empress.jpg",
+        "description": "Abundance, nurturing, fertility, life in bloom!"
+    },
+    {
+        "id": "5",
+        "name": "The Emperor",
+        "image_url": "https://upload.wikimedia.org/wikipedia/en/c/c3/RWS_Tarot_04_Emperor.jpg",
+        "description": "Structure, stability, rules and power."
+    },
+    {
+        "id": "6",
+        "name": "The Lovers",
+        "image_url": "https://upload.wikimedia.org/wikipedia/en/d/db/RWS_Tarot_06_Lovers.jpg",
+        "description": "Love, union, relationships, values alignment."
+    },
+    {
+        "id": "7",
+        "name": "The Chariot",
+        "image_url": "https://upload.wikimedia.org/wikipedia/en/9/9b/RWS_Tarot_07_Chariot.jpg",
+        "description": "Control, willpower, success, action, determination."
+    },
+    {
+        "id": "8",
+        "name": "Strength",
+        "image_url": "https://upload.wikimedia.org/wikipedia/en/f/f5/RWS_Tarot_08_Strength.jpg",
+        "description": "Strength, courage, persuasion, influence, compassion."
+    },
+    {
+        "id": "9",
+        "name": "The Hermit",
+        "image_url": "https://upload.wikimedia.org/wikipedia/en/4/4d/RWS_Tarot_09_Hermit.jpg",
+        "description": "Soul-searching, introspection, being alone, inner guidance."
+    },
+    {
+        "id": "10",
+        "name": "Wheel of Fortune",
+        "image_url": "https://upload.wikimedia.org/wikipedia/en/3/3c/RWS_Tarot_10_Wheel_of_Fortune.jpg",
+        "description": "Good luck, karma, life cycles, destiny, a turning point."
+    }
+]
