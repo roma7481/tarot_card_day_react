@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Home, Layers, Notebook, Settings, Sparkles, BarChart3 } from 'lucide-react-native';
 import { useTheme as useStyledTheme } from 'styled-components/native';
 import * as Notifications from 'expo-notifications';
+import { ChatProvider } from './src/contexts/ChatContext';
 
 // Configure notifications globally
 Notifications.setNotificationHandler({
@@ -145,7 +146,9 @@ export default function App() {
     <SafeAreaProvider>
       <DatabaseProvider>
         <ThemeProvider>
-          <AppContent />
+          <ChatProvider>
+            <AppContent />
+          </ChatProvider>
         </ThemeProvider>
       </DatabaseProvider>
     </SafeAreaProvider>

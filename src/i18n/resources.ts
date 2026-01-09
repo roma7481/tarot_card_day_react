@@ -105,16 +105,22 @@ export const resources = {
                     "That's a profound question. The cards indicate a hidden opportunity.",
                     "With {{cardName}}, trust your intuition on this matter.",
                     "The energy here is potent. Proceed with clarity."
-                ]
+                ],
+                suggestions: {
+                    general: "What is the main theme today?",
+                    love: "How does this affect my love life?",
+                    career: "What about my career?",
+                },
+                copy: "Copy",
+                share: "Share",
+                saveNote: "Save to Note",
+                tip: "Tip: Long press a message to save or share"
+            },
+            common: {
+                cancel: "Cancel"
             },
 
-            notes: {
-                // ... existing
-                byDate: "By Date",
-                byCard: "By Card",
-                numberOfNotes: "Number of Notes: ",
-                noNotes: "No journal entries yet."
-            },
+
             // ... (Repeat for other languages with placeholders or machine translation)
             // For brevity, I will apply this pattern to 'ru', 'es', etc. assuming basic translation or placeholder.
             // Since I cannot do perfect translation for all without user input, I will use English for new keys in other langs 
@@ -172,7 +178,8 @@ export const resources = {
                 delete: "Delete",
                 edit: "Edit",
                 byDate: "By Date",
-                byCard: "By Card"
+                byCard: "By Card",
+                numberOfNotes: "Number of Notes: "
             },
             rate: {
                 title: "Rate Us",
@@ -313,7 +320,20 @@ export const resources = {
                     "Это глубокий вопрос. Карты указывают на скрытую возможность.",
                     "С картой {{cardName}}, доверьтесь своей интуиции.",
                     "Энергия здесь мощная. Действуйте с ясностью."
-                ]
+                ],
+                suggestions: {
+                    general: "Какая главная тема сегодня?",
+                    love: "Как это повлияет на любовь?",
+                    career: "Что насчет карьеры?",
+                    action: "Что мне делать?"
+                },
+                copy: "Копировать",
+                share: "Поделиться",
+                saveNote: "Сохранить в заметки",
+                tip: "Совет: Удерживайте сообщение, чтобы сохранить или поделиться"
+            },
+            common: {
+                cancel: "Отмена"
             },
             date: {
                 today: "Сегодня",

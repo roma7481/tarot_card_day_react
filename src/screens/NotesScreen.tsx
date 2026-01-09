@@ -196,20 +196,43 @@ export default function NotesScreen() {
   const [isModalVisible, setModalVisible] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
 
+  const [nameToIdMap, setNameToIdMap] = useState<Record<string, string>>({}); // Map names to IDs for legacy notes
+
   // 1. Initial Load of Card Names
   useEffect(() => {
     const loadCards = async () => {
       if (isTarotDBReady) {
         const allCards = await getAllCards();
         const map: Record<string, any> = {};
+        const nameMap: Record<string, string> = {};
+
         allCards.forEach((c: any) => {
           map[c.id] = c;
+          // Normalize name for lookup (e.g. handling potential case differences)
+          nameMap[c.name] = c.id;
+          // Also handle English name if it exists in the data separately, 
+          // but for now assume c.name might be the stored key for legacy notes.
+          // Ideally we would map all known localized names if possible, 
+          // but strictly speaking legacy notes likely used the specific localized string previously.
         });
         setCardMap(map);
+        setNameToIdMap(nameMap);
       }
     };
     loadCards();
   }, [isTarotDBReady, i18n.language]);
+
+  const resolveCardId = (storedValue: string): string => {
+    // If it's a number/ID directly
+    if (cardMap[storedValue]) return storedValue;
+
+    // If it's a name, try to find the ID
+    if (nameToIdMap[storedValue]) return nameToIdMap[storedValue];
+
+    // Fallback: If we can't find it, return the value itself 
+    // (in case it is an ID but not loaded yet, or just broken)
+    return storedValue;
+  };
 
   // 2. Refresh notes on focus
   useFocusEffect(
@@ -273,7 +296,7 @@ export default function NotesScreen() {
       <View>
         <TouchableOpacity activeOpacity={0.7} onPress={() => handleEdit(item)}>
           <HistoryItem>
-            <StyledCardImage source={getCardImage(item.cardName, i18n.language)} />
+            <StyledCardImage source={getCardImage(resolveCardId(item.cardName), i18n.language)} />
             <ItemContent>
               <DateText>
                 {new Date(item.date).toLocaleDateString(i18n.language, { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -303,7 +326,7 @@ export default function NotesScreen() {
       <View>
         <CardGroupContainer>
           <GroupHeader onPress={() => toggleExpand(item.cardId)} activeOpacity={0.7}>
-            <GroupImage source={getCardImage(item.cardId, i18n.language)} />
+            <GroupImage source={getCardImage(resolveCardId(item.cardId), i18n.language)} />
             <GroupInfo>
               <GroupTitle>{item.cardName}</GroupTitle>
               <GroupSub>{t('card.numberOfNotes')}{item.data.length}</GroupSub>

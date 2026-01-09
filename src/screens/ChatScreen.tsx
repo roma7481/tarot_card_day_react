@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, FlatList, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
+import { View, FlatList, KeyboardAvoidingView, Platform, TextInput, ScrollView, Share, Alert } from 'react-native';
 import styled, { useTheme } from 'styled-components/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Send, Bot, User, ArrowLeft } from 'lucide-react-native';
@@ -8,6 +8,34 @@ import { useTarotData } from '../hooks/useTarotData';
 import { useTarotDatabase, LocalizedCardData } from '../hooks/useTarotDatabase';
 import { useNavigation } from '@react-navigation/native';
 import { functions, httpsCallable } from '../services/FirebaseService';
+import * as Clipboard from 'expo-clipboard';
+import { useChat, Message } from '../contexts/ChatContext';
+import { useNotes } from '../hooks/useNotes';
+import { MessageOptionsModal } from '../components/MessageOptionsModal';
+
+const TipText = styled.Text`
+  color: ${props => props.theme.colors.textSub};
+  font-size: 12px;
+  text-align: center;
+  margin-top: 16px;
+  font-style: italic;
+  opacity: 0.7;
+`;
+
+const SuggestionChip = styled.TouchableOpacity`
+  background-color: ${props => props.theme.colors.card};
+  padding-horizontal: 16px;
+  padding-vertical: 8px;
+  border-radius: 20px;
+  margin-right: 8px;
+  border-width: 1px;
+  border-color: ${props => props.theme.colors.border};
+`;
+
+const SuggestionText = styled.Text`
+  color: ${props => props.theme.colors.text};
+  font-size: 14px;
+`;
 
 const Container = styled(LinearGradient)`
   flex: 1;
@@ -49,7 +77,7 @@ const MessageRow = styled.View<{ isUser: boolean }>`
     margin-bottom: 8px;
 `;
 
-const Bubble = styled.View<{ isUser: boolean }>`
+const Bubble = styled.TouchableOpacity<{ isUser: boolean }>`
     background-color: ${props => props.isUser ? props.theme.colors.primary : props.theme.colors.surface};
     padding: 12px 16px;
     border-radius: 20px;
@@ -108,24 +136,24 @@ const SendButton = styled.TouchableOpacity`
     justify-content: center;
 `;
 
-interface Message {
-    id: string;
-    text: string;
-    isUser: boolean;
-    timestamp: number;
-}
-
 export default function ChatScreen() {
     const theme = useTheme();
     const navigation = useNavigation();
     const { t, i18n } = useTranslation();
     const { dailyCard, loading } = useTarotData();
     const { getCardInterpretation } = useTarotDatabase();
-    const [messages, setMessages] = useState<Message[]>([]);
+
+    // Contexts
+    const { getMessages, addMessage } = useChat();
+    const { addNote } = useNotes();
+
     const [inputText, setInputText] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const flatListRef = useRef<FlatList>(null);
     const [cardName, setCardName] = useState('');
+    const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+
+    const messages = dailyCard ? getMessages(dailyCard.id) : [];
 
     useEffect(() => {
         const load = async () => {
@@ -143,21 +171,47 @@ export default function ChatScreen() {
 
     // Initial Greeting
     useEffect(() => {
-        if (loading) return;
-        if (cardName && messages.length === 0) {
-            setMessages([{
+        if (loading || !dailyCard) return;
+        const currentMsgs = getMessages(dailyCard.id);
+
+        if (cardName && currentMsgs.length === 0) {
+            addMessage(dailyCard.id, {
                 id: 'init',
                 text: t('chat.init', { cardName }),
                 isUser: false,
                 timestamp: Date.now()
-            }]);
+            });
         }
-    }, [cardName, messages.length, loading, t]);
+    }, [cardName, loading, dailyCard, t]);
 
-    // ...
+    const handleLongPress = (msg: Message) => {
+        setSelectedMessage(msg);
+    };
+
+    const handleCopy = async () => {
+        if (selectedMessage) {
+            await Clipboard.setStringAsync(selectedMessage.text);
+            setSelectedMessage(null);
+        }
+    };
+
+    const handleShare = async () => {
+        if (selectedMessage) {
+            await Share.share({ message: selectedMessage.text });
+            setSelectedMessage(null);
+        }
+    };
+
+    const handleSaveNote = () => {
+        if (selectedMessage && dailyCard) {
+            // Using dailyCard.id ensures the image lookup works in NotesScreen
+            addNote(dailyCard.id, selectedMessage.text, () => Alert.alert("Saved", "Note saved to journal."));
+            setSelectedMessage(null);
+        }
+    };
 
     const handleSend = async () => {
-        if (!inputText.trim()) return;
+        if (!inputText.trim() || !dailyCard) return;
 
         const userMsg: Message = {
             id: Date.now().toString(),
@@ -166,7 +220,7 @@ export default function ChatScreen() {
             timestamp: Date.now()
         };
 
-        setMessages(prev => [...prev, userMsg]);
+        addMessage(dailyCard.id, userMsg);
         const question = inputText; // Capture for closure
         setInputText('');
         setIsTyping(true);
@@ -188,7 +242,7 @@ export default function ChatScreen() {
                 isUser: false,
                 timestamp: Date.now()
             };
-            setMessages(prev => [...prev, botMsg]);
+            addMessage(dailyCard.id, botMsg);
 
         } catch (error) {
             console.error("Oracle Error:", error);
@@ -198,7 +252,7 @@ export default function ChatScreen() {
                 isUser: false,
                 timestamp: Date.now()
             };
-            setMessages(prev => [...prev, errorMsg]);
+            addMessage(dailyCard.id, errorMsg);
         } finally {
             setIsTyping(false);
         }
@@ -224,22 +278,50 @@ export default function ChatScreen() {
                     renderItem={({ item }) => (
                         <MessageRow isUser={item.isUser}>
                             {!item.isUser && <Avatar><Bot size={16} color={theme.colors.textSub} /></Avatar>}
-                            <Bubble isUser={item.isUser}>
+                            <Bubble isUser={item.isUser} onLongPress={() => handleLongPress(item)} delayLongPress={500}>
                                 <MessageText isUser={item.isUser}>{item.text}</MessageText>
                             </Bubble>
                             {/* {item.isUser && <Avatar isUser><User size={16} color="#fff"/></Avatar>} */}
                         </MessageRow>
                     )}
+                    ListFooterComponent={
+                        <View style={{ paddingBottom: 20 }}>
+                            {isTyping && (
+                                <MessageRow isUser={false}>
+                                    <Avatar><Bot size={16} color={theme.colors.textSub} /></Avatar>
+                                    <MessageText isUser={false} style={{ color: theme.colors.textSub, marginLeft: 8, fontStyle: 'italic' }}>
+                                        {t('chat.typing')}
+                                    </MessageText>
+                                </MessageRow>
+                            )}
+                            <TipText>{t('chat.tip', { defaultValue: 'Tip: Long press a message to save or share' })}</TipText>
+                        </View>
+                    }
                 />
-                {isTyping && (
-                    <MessageRow isUser={false}>
-                        <Avatar><Bot size={16} color={theme.colors.textSub} /></Avatar>
-                        <MessageText isUser={false} style={{ color: theme.colors.textSub, marginLeft: 8, fontStyle: 'italic' }}>
-                            {t('chat.typing')}
-                        </MessageText>
-                    </MessageRow>
-                )}
             </ChatArea>
+
+            {/* Suggestion Chips */}
+            {!isTyping && (
+                <View style={{ height: 50 }}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{ paddingHorizontal: 16, alignItems: 'center' }}
+                    >
+                        {['general', 'love', 'career', 'action'].map((key) => (
+                            <SuggestionChip
+                                key={key}
+                                onPress={() => {
+                                    const text = t(`chat.suggestions.${key}`);
+                                    setInputText(text);
+                                }}
+                            >
+                                <SuggestionText>{t(`chat.suggestions.${key}`)}</SuggestionText>
+                            </SuggestionChip>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
                 <InputContainer>
@@ -255,6 +337,14 @@ export default function ChatScreen() {
                     </SendButton>
                 </InputContainer>
             </KeyboardAvoidingView>
+
+            <MessageOptionsModal
+                visible={!!selectedMessage}
+                onClose={() => setSelectedMessage(null)}
+                onCopy={handleCopy}
+                onShare={handleShare}
+                onSave={handleSaveNote}
+            />
         </Container>
     );
 }

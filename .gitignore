@@ -30,6 +30,10 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# Editor
+*.swp
+.vscode/
+
 # local env files
 .env*.local
 
@@ -39,3 +43,15 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Firebase
+google-services.json
+.firebaserc
+functions/node_modules/
+functions/package-lock.json
+
+# Temporary / Debug Scripts
+check_*.js
+dump_*.js
+inspect_db.js
+functions/test_gemini.js
