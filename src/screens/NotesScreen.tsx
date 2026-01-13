@@ -8,11 +8,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar, Layers, ChevronRight, ChevronDown, Trash2 } from 'lucide-react-native';
 
 import { useNotes, Note } from '../hooks/useNotes';
+import { useCanAccessNotes } from '../hooks/useCanAccessNotes';
 import { useTarotDatabase } from '../hooks/useTarotDatabase';
 import { NoteItem } from '../components/NoteItem';
 import { getCardImage } from '../utils/cardImageMapping';
 import { adService } from '../services/AdService';
 import { NativeAdCard } from '../components/ads/NativeAdCard';
+
+import { LEGACY_NAME_TO_ID } from '../data/legacyCardMapping';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -181,7 +184,10 @@ const NotesListContainer = styled.View`
 import { JournalModal } from '../components/JournalModal';
 import { TarotCard } from '../hooks/useDailyCardManager'; // Or useTarotData, aligning interfaces
 
+import { useNavigation } from '@react-navigation/native';
+
 export default function NotesScreen() {
+  const navigation = useNavigation<any>();
   const { top } = useSafeAreaInsets();
   const theme = useStyledTheme();
   const { t, i18n } = useTranslation();
@@ -196,7 +202,9 @@ export default function NotesScreen() {
   const [isModalVisible, setModalVisible] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
 
-  const [nameToIdMap, setNameToIdMap] = useState<Record<string, string>>({}); // Map names to IDs for legacy notes
+  // Modal State
+
+  // ... (existing imports)
 
   // 1. Initial Load of Card Names
   useEffect(() => {
@@ -204,33 +212,35 @@ export default function NotesScreen() {
       if (isTarotDBReady) {
         const allCards = await getAllCards();
         const map: Record<string, any> = {};
-        const nameMap: Record<string, string> = {};
 
+        // We can just use the map for ID -> Localized Name
         allCards.forEach((c: any) => {
           map[c.id] = c;
-          // Normalize name for lookup (e.g. handling potential case differences)
-          nameMap[c.name] = c.id;
-          // Also handle English name if it exists in the data separately, 
-          // but for now assume c.name might be the stored key for legacy notes.
-          // Ideally we would map all known localized names if possible, 
-          // but strictly speaking legacy notes likely used the specific localized string previously.
         });
         setCardMap(map);
-        setNameToIdMap(nameMap);
       }
     };
     loadCards();
   }, [isTarotDBReady, i18n.language]);
 
   const resolveCardId = (storedValue: string): string => {
-    // If it's a number/ID directly
+    // 1. Is it a direct ID? (e.g. "1", "78")
     if (cardMap[storedValue]) return storedValue;
 
-    // If it's a name, try to find the ID
-    if (nameToIdMap[storedValue]) return nameToIdMap[storedValue];
+    // 2. Is it a legacy localized name? (e.g. "РЫЦАРЬ МЕЧЕЙ")
+    const legacyId = LEGACY_NAME_TO_ID[storedValue];
+    if (legacyId) return legacyId;
 
-    // Fallback: If we can't find it, return the value itself 
-    // (in case it is an ID but not loaded yet, or just broken)
+    // 3. Fallback: maybe it's just broken or unknown
+    return storedValue;
+  };
+
+  // Helper to get display name
+  const getDisplayName = (storedValue: string) => {
+    const id = resolveCardId(storedValue);
+    // If we resolved it to an ID, show the CURRENT localized name
+    if (cardMap[id]) return cardMap[id].name;
+    // If not, show the raw stored value (legacy name)
     return storedValue;
   };
 
@@ -246,7 +256,13 @@ export default function NotesScreen() {
     getAllNotes();
   };
 
+  const { canAccess } = useCanAccessNotes();
+
   const handleEdit = (note: Note) => {
+    if (!canAccess) {
+      navigation.navigate('Paywall');
+      return;
+    }
     setEditingNote(note);
     setModalVisible(true);
   };
@@ -281,10 +297,11 @@ export default function NotesScreen() {
 
     return Object.keys(grouped).map(key => ({
       cardId: key,
-      cardName: cardMap[key]?.name || `Card ${key}`,
+      // Use getDisplayName logic here
+      cardName: getDisplayName(key),
       data: grouped[key]
     })).sort((a, b) => a.cardName.localeCompare(b.cardName));
-  }, [notes, cardMap]);
+  }, [notes, cardMap, i18n.language]);
 
   // Renders
   const renderDateItem = ({ item, index }: { item: Note, index: number }) => {
@@ -299,9 +316,12 @@ export default function NotesScreen() {
             <StyledCardImage source={getCardImage(resolveCardId(item.cardName), i18n.language)} />
             <ItemContent>
               <DateText>
-                {new Date(item.date).toLocaleDateString(i18n.language, { month: 'short', day: 'numeric', year: 'numeric' })}
+                {(() => {
+                  const [y, m, d] = item.date.split('-').map(Number);
+                  return new Date(y, m - 1, d).toLocaleDateString(i18n.language, { month: 'short', day: 'numeric', year: 'numeric' });
+                })()}
               </DateText>
-              <CardNameText>{card?.name || item.cardName}</CardNameText>
+              <CardNameText>{getDisplayName(item.cardName)}</CardNameText>
               <NotePreviewText numberOfLines={1} ellipsizeMode="tail">
                 {item.note.replace(/\[Mood:.*?\]\s*/, '')}
               </NotePreviewText>

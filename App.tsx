@@ -1,4 +1,5 @@
 import React from 'react';
+import { useFonts, Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 import './src/i18n'; // Initialize i18n
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
@@ -27,7 +28,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import WidgetConfigScreen from './src/screens/WidgetConfigScreen';
 import PaywallScreen from './src/screens/PaywallScreen';
-import { ThemeProvider } from './src/theme/ThemeContext';
+import { ThemeProvider } from './src/theme/ThemeContext'; // Keep this ThemeProvider for now, as the instruction implies a refactor but doesn't fully provide it.
 
 const Tab = createBottomTabNavigator();
 
@@ -40,12 +41,27 @@ import ChatScreen from './src/screens/ChatScreen';
 
 import WidgetHelpScreen from './src/screens/WidgetHelpScreen';
 import RateAppDialog from './src/components/RateAppDialog';
+import { MigrationWrapper } from './src/components/MigrationWrapper'; // Added MigrationWrapper import
+import { DatabaseProvider } from './src/data/DatabaseContext';
 
 const Stack = createNativeStackNavigator();
+
+import { adService } from './src/services/AdService';
+
+// ... class/function ...
 
 function TabNavigator() {
   const theme = useStyledTheme();
   const { t } = useTranslation();
+
+  // Initialize Ads on mount
+  React.useEffect(() => {
+    adService.initialize().then(() => {
+      console.log('[App] AdService initialized');
+      // Preload first ad
+      adService.loadInterstitial();
+    });
+  }, []);
 
   return (
     <Tab.Navigator
@@ -118,11 +134,30 @@ function TabNavigator() {
   );
 }
 
-function AppContent() {
-  const theme = useStyledTheme(); // Access the provided theme
+import { analyticsService } from './src/services/AnalyticsService';
+
+function AppLayout() {
+  const theme = useStyledTheme();
+  const { t } = useTranslation();
+  const routeNameRef = React.useRef<string | undefined>();
+  const navigationRef = React.useRef<any>(null);
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => {
+        routeNameRef.current = navigationRef.current.getCurrentRoute().name;
+      }}
+      onStateChange={async () => {
+        const previousRouteName = routeNameRef.current;
+        const currentRouteName = navigationRef.current.getCurrentRoute().name;
+
+        if (previousRouteName !== currentRouteName) {
+          await analyticsService.logScreenView(currentRouteName, currentRouteName);
+        }
+        routeNameRef.current = currentRouteName;
+      }}
+    >
       <StatusBar style={theme.colors.text === '#334155' ? 'dark' : 'light'} />
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="MainTabs" component={TabNavigator} />
@@ -135,19 +170,60 @@ function AppContent() {
         <Stack.Screen name="WidgetHelp" component={WidgetHelpScreen} options={{ presentation: 'card' }} />
       </Stack.Navigator>
       <RateAppDialog />
-    </NavigationContainer >
+    </NavigationContainer>
   );
 }
 
-import { DatabaseProvider } from './src/data/DatabaseContext';
-
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+  });
+
+  // Restore Language
+  // Restore Language
+  React.useEffect(() => {
+    // 1. Language
+    import('@react-native-async-storage/async-storage').then(async (m) => {
+      const savedLang = await m.default.getItem('user-language');
+      if (savedLang) {
+        import('./src/i18n').then(i18nModule => {
+          i18nModule.default.changeLanguage(savedLang);
+        });
+      }
+    });
+
+    // 2. Analytics
+    import('./src/services/AnalyticsService').then(({ analyticsService }) => {
+      analyticsService.setCrashlyticsCollectionEnabled(true);
+      analyticsService.logEvent('app_open');
+    });
+
+    // 3. AdMob Consent
+    import('./src/services/AdMobService').then(({ adMobService }) => {
+      // Check consent (Production mode: no forced debug)
+      if (adService.getProvider() !== 'applovin') {
+        adMobService.checkConsent();
+      } else {
+        console.log('[App] AppLovin active, skipping AdMob consent.');
+      }
+    });
+  }, []);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <SafeAreaProvider>
       <DatabaseProvider>
         <ThemeProvider>
           <ChatProvider>
-            <AppContent />
+            <MigrationWrapper>
+              <AppLayout />
+            </MigrationWrapper>
           </ChatProvider>
         </ThemeProvider>
       </DatabaseProvider>

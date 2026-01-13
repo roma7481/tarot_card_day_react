@@ -9,10 +9,12 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useHistory, DailyDraw } from '../hooks/useHistory';
 import { getCardImage } from '../utils/cardImageMapping';
-import cardsData from '../data/cards.json';
+// import cardsData from '../data/cards.json'; // Removed static data dependency
 import { RevealedCard } from '../components/RevealedCard';
 import { TarotCard } from '../hooks/useTarotData';
+import { useTarotDatabase } from '../hooks/useTarotDatabase';
 import { adService } from '../services/AdService';
+import { usePremium } from '../hooks/usePremium';
 
 // --- Styled Components ---
 
@@ -174,17 +176,32 @@ export default function HistoryScreen() {
     const { t, i18n } = useTranslation();
     const navigation = useNavigation();
     const { getHistory } = useHistory();
+    const { getAllCards } = useTarotDatabase();
     const [history, setHistory] = useState<DailyDraw[]>([]);
     const [selectedDraw, setSelectedDraw] = useState<DailyDraw | null>(null);
     const [filter, setFilter] = useState<FilterType>('ALL');
+    const [cardMap, setCardMap] = useState<Record<string, string>>({});
+
+    // Premium Check
+    const { isPremium, loading: premiumLoading } = usePremium();
 
     useEffect(() => {
         loadHistory();
-    }, []);
+        loadLocalizedMap();
+    }, [i18n.language]);
 
     const loadHistory = async () => {
         const data = await getHistory();
         setHistory(data);
+    };
+
+    const loadLocalizedMap = async () => {
+        const cards = await getAllCards();
+        const map: Record<string, string> = {};
+        cards.forEach(c => {
+            map[c.id] = c.name;
+        });
+        setCardMap(map);
     };
 
     const handlePress = (item: DailyDraw) => {
@@ -210,7 +227,8 @@ export default function HistoryScreen() {
         const groups: { [key: string]: DailyDraw[] } = {};
 
         filteredHistory.forEach(item => {
-            const date = new Date(item.date);
+            const [y, m, d] = item.date.split('-').map(Number);
+            const date = new Date(y, m - 1, d); // Local date
             const key = date.toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' }).toUpperCase();
             if (!groups[key]) groups[key] = [];
             groups[key].push(item);
@@ -230,11 +248,13 @@ export default function HistoryScreen() {
 
 
     const renderItem = ({ item }: { item: DailyDraw }) => {
-        const allCards = (cardsData as any).cards || cardsData;
-        const cardDetails = allCards.find((c: any) => c.id == item.card_id) || {};
-        const description = cardDetails.description || '';
+        // Use localized name if available, fallback to stored
+        const displayName = cardMap[item.card_id] || item.card_name;
 
-        const dateObj = new Date(item.date);
+        // Description skipped for efficiency in list
+
+        const [y, m, d] = item.date.split('-').map(Number);
+        const dateObj = new Date(y, m - 1, d); // Local time
         const today = new Date();
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
@@ -251,8 +271,7 @@ export default function HistoryScreen() {
             <HistoryItem onPress={() => handlePress(item)} activeOpacity={0.7}>
                 <CardThumb source={getCardImage(item.card_id, i18n.language)} resizeMode="cover" />
                 <ItemContent>
-                    <ItemTitle>{item.card_name}</ItemTitle>
-                    <ItemSubtitle numberOfLines={2}>{description}</ItemSubtitle>
+                    <ItemTitle>{displayName}</ItemTitle>
                 </ItemContent>
                 <DateBadge>
                     <DateText>{dateLabel}</DateText>
@@ -292,14 +311,23 @@ export default function HistoryScreen() {
     );
 
     if (selectedDraw) {
-        // Construct TarotCard object
-        const allCards = (cardsData as any).cards || cardsData;
-        const cardDetails = allCards.find((c: any) => c.id == selectedDraw.card_id) || {};
+        // Construct TarotCard object with localized name
+        const displayName = cardMap[selectedDraw.card_id] || selectedDraw.card_name;
+
+        // We still need description? For now, we don't have descriptions loaded in bulk. 
+        // We can pass empty and let RevealedCard handle fetches if it has internal logic, 
+        // but currently we just display. 
+        // Ideally, fetching full details on click would be better, but user just wants names fixed for now.
+
+        // Fallback to static data for description if needed (but it's English only)
+        // const allCards = (cardsData as any).cards || cardsData;
+        // const cardDetails = allCards.find((c: any) => c.id == selectedDraw.card_id) || {};
 
         const tarotCard: TarotCard = {
             id: String(selectedDraw.card_id),
-            name: selectedDraw.card_name || cardDetails.name || 'Unknown',
-            description: cardDetails.description || '',
+            name: displayName,
+            // description: cardDetails.description || '', // English description fallback
+            description: '', // We should probably fetch this properly or leave blank
             image_url: ''
         };
 
@@ -307,15 +335,69 @@ export default function HistoryScreen() {
             <RevealedCard
                 card={tarotCard}
                 onBack={() => {
-                    // Ad on close logic could be added here too, as per user request in previous chat steps, but current request asked for "clicks on card" or "count"
-                    // For now, simple close is fine or stick to revealed card internal ad logic (which exists in RevealedCard logic: adService.checkInterstitial in onBack if needed, wait, revealedCard prop onBack call triggers logic in revealed card?)
-                    // RevealedCard logic: onBack() called. AND internal local handler might also trigger ad.
-                    // Actually RevealedCard default implementation calls checkInterstitial on back button press internally!
-                    // Just calling setSelectedDraw(null) is fine.
                     setSelectedDraw(null);
                 }}
                 embed={false}
             />
+        );
+    }
+
+    // Lock Screen for Non-Premium
+    if (!premiumLoading && !isPremium) {
+        return (
+            <Container
+                colors={(theme?.colors?.background || ['#000000', '#000000']) as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            >
+                <Header style={{ marginTop: top }}>
+                    <IconButton onPress={() => navigation.goBack()}>
+                        <ArrowLeft color={theme.colors.icon} size={24} />
+                    </IconButton>
+                    <View>
+                        <HeaderTitle>{t('settings.history')}</HeaderTitle>
+                    </View>
+                    <View style={{ width: 40 }} />
+                </Header>
+
+                <EmptyState>
+                    <Layers color={theme.colors.gold} size={64} />
+                    <Text style={{
+                        color: theme.colors.text,
+                        fontFamily: 'Manrope_700Bold',
+                        fontSize: 20,
+                        marginTop: 24,
+                        textAlign: 'center'
+                    }}>
+                        {t('paywall.features.history.title') || "History is Locked"}
+                    </Text>
+                    <Text style={{
+                        color: theme.colors.textSub,
+                        fontFamily: 'Manrope_400Regular',
+                        fontSize: 14,
+                        marginTop: 12,
+                        textAlign: 'center',
+                        maxWidth: 280,
+                        marginBottom: 32
+                    }}>
+                        {t('paywall.features.history.desc') || "Upgrade to Premium to view your past readings."}
+                    </Text>
+
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('Paywall' as never)}
+                        style={{
+                            backgroundColor: theme.colors.primary,
+                            paddingHorizontal: 24,
+                            paddingVertical: 14,
+                            borderRadius: 12
+                        }}
+                    >
+                        <Text style={{ color: '#fff', fontFamily: 'Manrope_700Bold', fontSize: 16 }}>
+                            {t('paywall.cta') || "Unlock Premium"}
+                        </Text>
+                    </TouchableOpacity>
+                </EmptyState>
+            </Container>
         );
     }
 

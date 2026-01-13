@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleProp, ViewStyle } from 'react-native';
 import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
-import AppLovinMAX from 'react-native-applovin-max';
+import AppLovinMAX, { AdFormat, AdView } from 'react-native-applovin-max';
 import { adService } from '../../services/AdService';
 
 interface Props {
@@ -18,21 +18,29 @@ export const BannerAdWrapper: React.FC<Props> = ({ adMobUnitId, appLovinUnitId, 
         // Note: AppLovinMAX.AdView requires a specific height usually (50 or 90)
         // and adaptive banners are different.
         return (
-            <View style={style}>
-                <AppLovinMAX.AdView
-                    adUnitId={appLovinUnitId || "YOUR_APPLOVIN_BANNER_ID"}
-                    adFormat={AppLovinMAX.AdFormat.BANNER}
-                    style={{ width: '100%', height: 50 }} // Standard banner height
+            <View style={[style, { alignItems: 'center', justifyContent: 'center' }]}>
+                <AdView
+                    adUnitId={appLovinUnitId || adService.getBannerId()}
+                    adFormat={AdFormat.BANNER}
+                    style={{ width: 320, height: 50 }} // Explicit width/height matching load event
+                    onAdLoaded={(adInfo: any) => console.log('[BannerAdWrapper] AppLovin Banner Loaded', adInfo)}
+                    onAdLoadFailed={(error: any) => console.log('[BannerAdWrapper] AppLovin Banner Load Failed', error)}
                 />
             </View>
         );
     }
 
     // AdMob Banner
+    // If we passed TestIds.BANNER from parent, we override it here with the real ID for DeckScreen.
+    // Ideally parent passes it, but for now enforcing here as requested.
+    const realAdMobId = (adMobUnitId === 'ca-app-pub-3940256099942544/6300978111') // Default Test ID
+        ? 'ca-app-pub-1763151471947181/5938093019'
+        : adMobUnitId;
+
     return (
         <View style={style}>
             <BannerAd
-                unitId={adMobUnitId}
+                unitId={realAdMobId}
                 size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
                 requestOptions={{
                     requestNonPersonalizedAdsOnly: true,

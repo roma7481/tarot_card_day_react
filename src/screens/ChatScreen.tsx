@@ -11,6 +11,7 @@ import { functions, httpsCallable } from '../services/FirebaseService';
 import * as Clipboard from 'expo-clipboard';
 import { useChat, Message } from '../contexts/ChatContext';
 import { useNotes } from '../hooks/useNotes';
+import { useCanAccessNotes } from '../hooks/useCanAccessNotes';
 import { MessageOptionsModal } from '../components/MessageOptionsModal';
 
 const TipText = styled.Text`
@@ -23,7 +24,7 @@ const TipText = styled.Text`
 `;
 
 const SuggestionChip = styled.TouchableOpacity`
-  background-color: ${props => props.theme.colors.card};
+  background-color: ${props => props.theme.colors.surface};
   padding-horizontal: 16px;
   padding-vertical: 8px;
   border-radius: 20px;
@@ -95,7 +96,7 @@ const MessageText = styled.Text<{ isUser: boolean }>`
     line-height: 22px;
 `;
 
-const Avatar = styled.View`
+const Avatar = styled.View<{ isUser?: boolean }>`
     width: 32px;
     height: 32px;
     border-radius: 16px;
@@ -202,7 +203,18 @@ export default function ChatScreen() {
         }
     };
 
+    const { canAccess } = useCanAccessNotes();
+
     const handleSaveNote = () => {
+        if (!canAccess) {
+            // We can't use navigation.navigate('Paywall') directly if it's not in stack?
+            // ChatScreen is usually in a stack where Paywall is available.
+            // If not, we might need a prop or just Alert.
+            // Assuming Paywall is a global screen.
+            navigation.navigate('Paywall' as never);
+            return;
+        }
+
         if (selectedMessage && dailyCard) {
             // Using dailyCard.id ensures the image lookup works in NotesScreen
             addNote(dailyCard.id, selectedMessage.text, () => Alert.alert("Saved", "Note saved to journal."));

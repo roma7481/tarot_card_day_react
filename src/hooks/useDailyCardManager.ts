@@ -1,7 +1,8 @@
-
 import { useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import cardsData from '../data/cards.json';
+import { useNotesDatabase } from './useNotesDatabase';
+import { useHistory } from './useHistory';
+import { useTarotDatabase } from './useTarotDatabase';
 
 export interface TarotCard {
     id: string;
@@ -10,142 +11,146 @@ export interface TarotCard {
     description?: string;
 }
 
-interface DailyCardManagerState {
-    dailyCard: TarotCard | null;
-    drawnCardHistory: string[];
-    isLoading: boolean;
-    isNewCard: boolean;
-    currentDate: string; // The date currently being VIEWED
-    navigateDay: (direction: number) => void;
-    isToday: boolean;
-}
-
 export function useDailyCardManager() {
-    const [dailyDraws, setDailyDraws] = useState<Record<string, string>>({}); // Date -> CardName
-    const [drawnCardHistory, setDrawnCardHistory] = useState<string[]>([]);
-    const [viewDate, setViewDate] = useState<string>(new Date().toLocaleDateString('en-CA')); // YYYY-MM-DD local
+    const { db, isReady } = useNotesDatabase();
+    const { addDailyDraw } = useHistory();
+    const { getCardInterpretation, isReady: isTarotReady } = useTarotDatabase(); // Use localized DB
+
+    // View State
+    // Default to "today" YYYY-MM-DD local
+    const getTodayStr = () => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const [viewDate, setViewDate] = useState<string>(getTodayStr());
+    const [dailyCard, setDailyCard] = useState<TarotCard | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isNewCard, setIsNewCard] = useState(false);
 
-    // Storage Keys
-    const STORAGE_KEY_DRAWS = 'daily_draws_map'; // { "2023-10-01": "The Fool" }
-    const STORAGE_KEY_HISTORY = 'drawn_card_history_list'; // ["The Fool", "The Magician"]
-
-    // Legacy / Migration Keys (Native App or Previous Version)
-    const LEGACY_KEY_CARD = 'dailyCardName';
-    const LEGACY_KEY_DATE = 'lastDrawDate';
-
-    const getAllCards = (): TarotCard[] => {
-        return (cardsData as any).cards || cardsData;
-    };
-
-    const getTodayStr = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
-
-    // Load Data
+    // Load Card for ViewDate
     useEffect(() => {
-        const initManager = async () => {
+        const fetchCardForDate = async () => {
+            if (!db || !isReady || !isTarotReady) return;
+
+            setIsLoading(true);
             try {
-                setIsLoading(true);
-                const todayStr = getTodayStr();
-                setViewDate(todayStr);
+                // Query SQLite for this specific date
+                const record = await db.getFirstAsync<{ card_name: string, card_id: string }>(
+                    'SELECT card_name, card_id FROM daily_draws WHERE date = ?',
+                    [viewDate]
+                );
 
-                const [storedDrawsStr, storedHistoryStr, legacyCard, legacyDate] = await Promise.all([
-                    AsyncStorage.getItem(STORAGE_KEY_DRAWS),
-                    AsyncStorage.getItem(STORAGE_KEY_HISTORY),
-                    AsyncStorage.getItem(LEGACY_KEY_CARD),
-                    AsyncStorage.getItem(LEGACY_KEY_DATE)
-                ]);
+                console.log(`[DailyCard] Fetching for ${viewDate}`, record);
 
-                let draws: Record<string, string> = storedDrawsStr ? JSON.parse(storedDrawsStr) : {};
-                let history: string[] = storedHistoryStr ? JSON.parse(storedHistoryStr) : [];
+                if (record && record.card_id) {
+                    // Fetch LOCALIZED content by ID
+                    const localizedData = await getCardInterpretation(record.card_id);
 
-                // --- MIGRATION LOGIC ---
-                // If we have legacy keys but no new map, migrate them
-                if (Object.keys(draws).length === 0 && legacyCard && legacyDate) {
-                    console.log("Migrating legacy daily card to new map system...");
-                    draws[legacyDate] = legacyCard;
-                    if (!history.includes(legacyCard)) {
-                        history.push(legacyCard);
+                    if (localizedData) {
+                        setDailyCard({
+                            id: record.card_id,
+                            name: localizedData.name,
+                            image_url: '', // Handled by UI
+                            description: localizedData.general
+                        });
+                        console.log(`[DailyCard] Loaded localized: ${localizedData.name}`);
+                    } else {
+                        // Fallback (Rare): If localized DB fails, show stored name (migrated/english)
+                        setDailyCard({
+                            id: record.card_id,
+                            name: record.card_name || 'Unknown',
+                            image_url: '',
+                            description: ''
+                        });
                     }
-                    // Save immediately
-                    await AsyncStorage.multiSet([
-                        [STORAGE_KEY_DRAWS, JSON.stringify(draws)],
-                        [STORAGE_KEY_HISTORY, JSON.stringify(history)]
-                    ]);
+                } else {
+                    setDailyCard(null);
                 }
-
-                setDailyDraws(draws);
-                setDrawnCardHistory(history);
-
-            } catch (error) {
-                console.error("Failed to init Daily Manager:", error);
+            } catch (e) {
+                console.error("Error fetching daily card for date:", viewDate, e);
+                setDailyCard(null);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        initManager();
-    }, []);
+        fetchCardForDate();
+    }, [viewDate, db, isReady, isTarotReady, getCardInterpretation]);
 
     const drawDailyCard = async () => {
         const todayStr = getTodayStr();
 
-        // Safety check: Don't draw if already drawn
-        if (dailyDraws[todayStr]) return;
+        // Safety
+        if (viewDate !== todayStr || dailyCard) return null;
 
-        console.log(" Drawing new card for date:", todayStr);
-        const allCards = getAllCards();
+        // Draw Random ID (1-78)
+        const randomId = String(Math.floor(Math.random() * 78) + 1);
 
-        // Simple random draw
-        const randomIndex = Math.floor(Math.random() * allCards.length);
-        const newCard = allCards[randomIndex];
+        // Fetch Content
+        const localizedData = await getCardInterpretation(randomId);
 
-        const newDraws = { ...dailyDraws, [todayStr]: newCard.name };
-        const newHistory = [...drawnCardHistory];
+        if (!localizedData) return null;
 
-        if (!newHistory.includes(newCard.name)) {
-            newHistory.push(newCard.name);
-            newHistory.sort();
+        const newCard: TarotCard = {
+            id: randomId,
+            name: localizedData.name,
+            image_url: '',
+            description: localizedData.general
+        };
+
+        // Save to SQLite
+        try {
+            await addDailyDraw(newCard.id, newCard.name);
+            setDailyCard(newCard); // Update UI immediately
+
+            setIsNewCard(true);
+            setTimeout(() => setIsNewCard(false), 3000);
+
+            return newCard;
+        } catch (e) {
+            console.error("Failed to save draw:", e);
+            return null;
         }
-
-        // Save State
-        setDailyDraws(newDraws);
-        setDrawnCardHistory(newHistory);
-
-        // Save to Storage
-        await AsyncStorage.multiSet([
-            [STORAGE_KEY_DRAWS, JSON.stringify(newDraws)],
-            [STORAGE_KEY_HISTORY, JSON.stringify(newHistory)]
-        ]);
-
-        setIsNewCard(true);
-        setTimeout(() => setIsNewCard(false), 3000);
-
-        return newCard;
     };
 
-    // Navigation
-    const navigateDay = (direction: number) => {
-        const current = new Date(viewDate);
-        current.setDate(current.getDate() + direction);
-        const newDateStr = current.toLocaleDateString('en-CA');
+    // Navigation (Skip Empty Days)
+    const navigateDay = async (direction: number) => {
+        if (!db) return;
 
-        // Prevent going to future
-        if (newDateStr > getTodayStr()) return;
+        try {
+            // "Previous" finds latest date BEFORE current
+            // "Next" finds earliest date AFTER current
+            const operator = direction < 0 ? '<' : '>';
+            const order = direction < 0 ? 'DESC' : 'ASC';
 
-        setViewDate(newDateStr);
+            const result = await db.getFirstAsync<{ date: string }>(
+                `SELECT date FROM daily_draws WHERE date ${operator} ? ORDER BY date ${order} LIMIT 1`,
+                [viewDate]
+            );
+
+            if (result) {
+                setViewDate(result.date);
+            } else {
+                // Edge Case: If going forward and no future cards found
+                // If we are NOT at "Today", create a path back to "Today" so user can draw new card.
+                if (direction > 0 && viewDate < getTodayStr()) {
+                    setViewDate(getTodayStr());
+                }
+                // If going back and no history, stay put (or maybe show toast "No earlier history")
+            }
+        } catch (e) {
+            console.error("Navigation error:", e);
+        }
     };
-
-    // Derive active card from ViewDate + Draws Map
-    const activeCardName = dailyDraws[viewDate];
-    const allCards = getAllCards();
-    const dailyCard = activeCardName ? allCards.find(c => c.name === activeCardName) || null : null;
 
     return {
         dailyCard,
-        drawnCardHistory,
         isLoading,
-        isNewCard: isNewCard && viewDate === getTodayStr(), // Only show animation if viewing today
+        isNewCard,
         currentDate: viewDate,
         navigateDay,
         isToday: viewDate === getTodayStr(),

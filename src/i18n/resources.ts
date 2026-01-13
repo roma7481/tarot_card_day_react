@@ -39,7 +39,19 @@ export const resources = {
                 minor: "Minor Arcana",
                 otherApps: "Other Apps",
                 notificationTime: "Notification Time",
-                dailyReminder: "Daily Reminder"
+                dailyReminder: "Daily Reminder",
+                premiumActive: "Premium Active",
+                premiumTitle: "Premium Feature",
+                allFeaturesUnlocked: "All features unlocked",
+                saved: "Preferences saved successfully."
+            },
+            common: {
+                success: "Success",
+                error: "Error",
+                saving: "Saving...",
+                errorSave: "Failed to save settings.",
+                cancel: "Cancel",
+                ok: "OK"
             },
             widget: {
                 title: "Widget Setup",
@@ -80,14 +92,15 @@ export const resources = {
                 mostFrequent: "Most Frequent Card",
                 drawnTimes: "Drawn {{count}} times",
                 noData: "No Data Yet",
-                noDataDesc: "Draw your daily card to see your soul statistics evolve."
+                noDataDesc: "Draw your daily card to see your soul statistics evolve.",
+                lockDescription: "Unlock comprehensive Tarot analytics and discover deeper patterns in your spiritual journey."
             },
             notifications: {
                 dailyTitle: "Your Daily Tarot Awaits 🔮",
                 dailyBody: "Discover the wisdom the cards have for you today."
             },
             main: {
-                title: "Daily Tarot",
+                title: "Tarot Card of the Day",
                 tapToReveal: "Tap to Reveal",
                 yourCard: "Your Card for Today",
                 readMeaning: "Read Meaning",
@@ -116,9 +129,7 @@ export const resources = {
                 saveNote: "Save to Note",
                 tip: "Tip: Long press a message to save or share"
             },
-            common: {
-                cancel: "Cancel"
-            },
+
 
 
             // ... (Repeat for other languages with placeholders or machine translation)
@@ -254,7 +265,18 @@ export const resources = {
                 minor: "Младшие Арканы",
                 otherApps: "Другие приложения",
                 notificationTime: "Время уведомлений",
-                dailyReminder: "Ежедневное напоминание"
+                dailyReminder: "Ежедневное напоминание",
+                premiumActive: "Премиум активен",
+                premiumTitle: "Премиум функция",
+                allFeaturesUnlocked: "Все функции разблокированы",
+                saved: "Настройки успешно сохранены."
+            },
+            common: {
+                success: "Успех",
+                error: "Ошибка",
+                saving: "Сохранение...",
+                errorSave: "Не удалось сохранить настройки.",
+                cancel: "Отмена"
             },
             widget: {
                 title: "Настройка виджета",
@@ -295,14 +317,15 @@ export const resources = {
                 mostFrequent: "Частая карта",
                 drawnTimes: "Выпала {{count}} раз(а)",
                 noData: "Нет данных",
-                noDataDesc: "Вытягивайте карту каждый день, чтобы увидеть статистику."
+                noDataDesc: "Вытягивайте карту каждый день, чтобы увидеть статистику.",
+                lockDescription: "Разблокируйте полную аналитику Таро и откройте глубокие закономерности вашего духовного пути."
             },
             notifications: {
                 dailyTitle: "Ваше Таро ждет 🔮",
                 dailyBody: "Узнайте, какую мудрость карты приготовили для вас сегодня."
             },
             main: {
-                title: "Таро Дня",
+                title: "Карта Таро Дня",
                 tapToReveal: "Нажмите, чтобы открыть",
                 yourCard: "Ваша карта на сегодня",
                 readMeaning: "Читать значение",
@@ -332,9 +355,7 @@ export const resources = {
                 saveNote: "Сохранить в заметки",
                 tip: "Совет: Удерживайте сообщение, чтобы сохранить или поделиться"
             },
-            common: {
-                cancel: "Отмена"
-            },
+
             date: {
                 today: "Сегодня",
                 yesterday: "Вчера"
@@ -455,14 +476,28 @@ export const resources = {
                 premiumDesc: "Sin anuncios e historial ilimitado",
                 all: "Todos",
                 major: "Arcanos Mayores",
-                minor: "Arcanos Menores"
+                minor: "Arcanos Menores",
+                premiumActive: "Premium Activo",
+                premiumTitle: "Función Premium",
+                allFeaturesUnlocked: "Todas las funciones desbloqueadas",
+                saved: "Preferencias guardadas exitosamente."
+            },
+            common: {
+                success: "Éxito",
+                error: "Error",
+                saving: "Guardando...",
+                errorSave: "Error al guardar la configuración.",
+                cancel: "Cancelar"
+            },
+            analytics: {
+                lockDescription: "Desbloquea análisis completos de Tarot y descubre patrones más profundos en tu viaje espiritual."
             },
             notifications: {
                 dailyTitle: "Tu Tarot Diario te Espera 🔮",
                 dailyBody: "Descubre la sabiduría que las cartas tienen para ti hoy."
             },
             main: {
-                title: "Tarot Diario",
+                title: "Carta de Tarot del Día",
                 tapToReveal: "Toca para revelar",
                 yourCard: "Tu carta para hoy",
                 readMeaning: "Leer significado",
@@ -585,7 +620,7 @@ export const resources = {
                 premiumDesc: "Sem anúncios e histórico ilimitado"
             },
             main: {
-                title: "Tarot Diário",
+                title: "Carta de Tarot do Dia",
                 tapToReveal: "Toque para revelar",
                 yourCard: "Sua carta para hoje",
                 readMeaning: "Ler significado",
@@ -704,7 +739,7 @@ export const resources = {
                 premiumDesc: "Rimuovi annunci e cronologia illimitata"
             },
             main: {
-                title: "Tarocchi Giornalieri",
+                title: "Carta dei Tarocchi del Giorno",
                 tapToReveal: "Tocca per rivelare",
                 yourCard: "La tua carta per oggi",
                 readMeaning: "Leggi significato",
@@ -823,7 +858,7 @@ export const resources = {
                 premiumDesc: "Supprimer les pubs et historique illimité"
             },
             main: {
-                title: "Tarot Quotidien",
+                title: "Carte de Tarot du Jour",
                 tapToReveal: "Appuyez pour révéler",
                 yourCard: "Votre carte pour aujourd'hui",
                 readMeaning: "Lire la signification",
@@ -942,7 +977,7 @@ export const resources = {
                 premiumDesc: "Keine Werbung & unbegrenzter Verlauf"
             },
             main: {
-                title: "Tages-Tarot",
+                title: "Tarotkarte des Tages",
                 tapToReveal: "Tippen zum Aufdecken",
                 yourCard: "Deine Karte für heute",
                 readMeaning: "Bedeutung lesen",
@@ -1061,7 +1096,7 @@ export const resources = {
                 premiumDesc: "広告なし＆履歴無制限"
             },
             main: {
-                title: "今日のタロット",
+                title: "今日のタロットカード",
                 tapToReveal: "タップしてめくる",
                 yourCard: "今日のカード",
                 readMeaning: "意味を読む",
@@ -1180,7 +1215,7 @@ export const resources = {
                 premiumDesc: "Usuń reklamy i nielimitowana historia"
             },
             main: {
-                title: "Tarot Codzienny",
+                title: "Karta Tarota Dnia",
                 tapToReveal: "Dotknij, aby odkryć",
                 yourCard: "Twoja karta na dziś",
                 readMeaning: "Czytaj znaczenie",

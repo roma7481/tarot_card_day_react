@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { NativeAd, NativeAdView, TestIds, NativeAsset, NativeAssetType } from 'react-native-google-mobile-ads';
+import AppLovinMAX, { AdFormat, AdView } from 'react-native-applovin-max';
 import styled, { useTheme as useStyledTheme } from 'styled-components/native';
 import { ThemeType as Theme } from '../../theme/colors';
 
@@ -76,15 +77,23 @@ const CTAText = styled.Text`
 
 export const NativeAdCard = ({ variant = 'default', containerStyle }: NativeAdCardProps) => {
   const [nativeAd, setNativeAd] = useState<NativeAd | null>(null);
+  const [isAdLoaded, setIsAdLoaded] = useState(false);
   const theme = useStyledTheme() as Theme;
 
+  // Get provider immediately
+  const adProvider = require('../../services/AdService').adService.getProvider();
+
   useEffect(() => {
+    // Skip Google Ad load if using AppLovin
+    if (adProvider === 'applovin') return;
+
     let ad: NativeAd | null = null;
 
     const load = async () => {
       try {
         // Use TestIds.NATIVE_VIDEO or TestIds.NATIVE used for testing
-        const id = variant === 'compact' ? TestIds.NATIVE : TestIds.NATIVE; // Can use different IDs if needed
+        // Real Native ID: ca-app-pub-1763151471947181/2186545296
+        const id = 'ca-app-pub-1763151471947181/2186545296';
         ad = await NativeAd.createForAdRequest(id);
         setNativeAd(ad);
       } catch (e) {
@@ -97,8 +106,41 @@ export const NativeAdCard = ({ variant = 'default', containerStyle }: NativeAdCa
     return () => {
       ad?.destroy();
     };
-  }, [variant]);
+  }, [variant, adProvider]);
 
+  // --- AppLovin MREC Implementation ---
+  if (adProvider === 'applovin') {
+    return (
+      <View style={[
+        containerStyle,
+        {
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginVertical: isAdLoaded ? 10 : 0,
+          height: isAdLoaded ? 'auto' : 0,
+          opacity: isAdLoaded ? 1 : 0
+        }
+      ]}>
+        {/* @ts-ignore */}
+        <AdView
+          adUnitId={require('../../services/AdService').adService.getMrecId()}
+          // @ts-ignore
+          adFormat={AdFormat.MREC}
+          style={{ width: 300, height: 250 }}
+          onAdLoaded={(adInfo: any) => {
+            console.log('[NativeAdCard] AppLovin MREC Loaded', adInfo);
+            setIsAdLoaded(true);
+          }}
+          onAdLoadFailed={(error: any) => {
+            console.log('[NativeAdCard] AppLovin MREC Load Failed', error);
+            setIsAdLoaded(false);
+          }}
+        />
+      </View>
+    );
+  }
+
+  // --- Google Ad Implementation ---
   if (!nativeAd) {
     // Optional: Return null or a placeholder while loading
     return null;

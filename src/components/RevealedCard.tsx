@@ -35,6 +35,8 @@ import { getCardImage } from '../utils/cardImageMapping';
 import { useTarotDatabase, LocalizedCardData } from '../hooks/useTarotDatabase';
 import { useTheme } from '../theme/ThemeContext';
 import { useNotes } from '../hooks/useNotes';
+import { usePremium } from '../hooks/usePremium';
+import { useCanAccessNotes } from '../hooks/useCanAccessNotes';
 import { NoteItem } from './NoteItem';
 import { JournalModal } from './JournalModal';
 
@@ -372,13 +374,24 @@ export const RevealedCard: React.FC<Props> = ({ card, onBack, embed = false }) =
         }
     }, [card.id, isReady, getNotesForCard]);
 
+    const { canAccess, loading: accessLoading } = useCanAccessNotes();
+    const { isPremium } = usePremium();
+
     const handleAddNote = () => {
+        if (!canAccess) {
+            navigation.navigate('Paywall' as never);
+            return;
+        }
         setEditingNoteId(null);
         setCurrentNoteText('');
         setNoteModalVisible(true);
     };
 
     const handleEditNote = (note: any) => {
+        if (!canAccess) {
+            navigation.navigate('Paywall' as never);
+            return;
+        }
         setEditingNoteId(note.note_id);
         setCurrentNoteText(note.note);
         setNoteModalVisible(true);
@@ -451,8 +464,6 @@ export const RevealedCard: React.FC<Props> = ({ card, onBack, embed = false }) =
                 <Header style={{ marginTop: top }}>
                     <IconButton onPress={() => {
                         onBack();
-                        // Trigger ad check after closing the card detail
-                        adService.checkInterstitial(() => { });
                     }}>
                         <ArrowLeft color={theme.colors.icon} size={20} />
                     </IconButton>
@@ -473,14 +484,17 @@ export const RevealedCard: React.FC<Props> = ({ card, onBack, embed = false }) =
 
                     <CardTitle>{localizedData ? localizedData.name : card.name}</CardTitle>
                     <TagsRow>
-                        <DividerDot />
+                        <DividerDot colors={['#FFD700', '#DAA520']} />
                         <TagText style={{ marginHorizontal: 8 }}>Intuition • Mystery</TagText>
-                        <DividerDot />
+                        <DividerDot colors={['#FFD700', '#DAA520']} />
                     </TagsRow>
 
                     <ChatButton onPress={() => {
-                        navigation.navigate('Chat' as never);
-                        adService.checkInterstitial(() => { });
+                        if (!isPremium) {
+                            navigation.navigate('Paywall' as never);
+                        } else {
+                            navigation.navigate('Chat' as never);
+                        }
                     }}>
                         <Bot size={20} color="#fff" />
                         <ChatButtonText>{t('main.askOracle')}</ChatButtonText>

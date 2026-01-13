@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import styled, { useTheme as useStyledTheme } from 'styled-components/native';
-import { View, Text, ScrollView, Alert, Switch } from 'react-native';
+import { View, Text, ScrollView, Alert, Switch, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -193,29 +193,44 @@ export default function WidgetConfigScreen() {
       // Trigger sync
       const todaysDraw = await getTodaysDraw();
       if (todaysDraw) {
-        // We need image URI mostly. 
-        // However, internal getCardImage logic is complex (requires numbers).
-        // Let's rely on what we have or just mock it for a quick update request 
-        // BUT better to just check if we can get the real image uri if possible
-        // or just trigger an update that will reuse persisted data? 
-        // WidgetSyncService usually takes params.
-        // Let's re-fetch what's needed.
-        // Actually, syncWidgetData logic in previous steps takes cardName, imageUuid.
-        // We can just pass the name and rebuild image uri or pass existing if usage allows.
-        // For now, let's just save. The next daily sync will pick it up or we can force it 
-        // if we reconstruct the URI.
+        const cardId = todaysDraw.card_id;
+        // cardId might be number, c.id is string. Use loose equality or toString()
+        const card = cardsData.find(c => c.id == cardId.toString());
 
-        // Reconstruct Image URI logic similar to how it's done elsewhere or just pass null to let it handle?
-        // The widget needs an image.
-        // Let's try to get image URI for today's card.
-        const imageSource = getCardImage(todaysDraw.card_id, 'en'); // Language might matter for reversed?
-        // ImageSource is a number (require) in development/production bundle usually.
-        // WidgetSyncService expects a URI string.
-        // We need resolveAssetSource from Image.
-        // We'll skip forcing a visual sync here to avoid complexity with Image resolution in this file.
-        // Just saving preferences is enough, user will see update on next natural sync or app open?
-        // Actually App open triggers sync in App.tsx typically.
-        // Let's manually trigger a sync if we can easily.
+        // Prioritize the name stored in history (which might be user-facing/localized if saved that way)
+        // Fallback to cards.json data, then default.
+        const cardName = todaysDraw.card_name || card?.name || "Daily Tarot";
+
+        // Get Image URI
+        // We need the resolved URI string (http or file)
+        // This is tricky in Expo Go vs Native, but let's try passing the ID and let Service handle?
+        // No, Service needs URI string.
+        // Let's pass null for imageUri if we can't easily resolve it here, 
+        // OR better: rely on the Service to do nothing if URI is bad, but at least pass settings.
+        // Actually, if we pass "" for imageUri, the service might keep old image or clear it?
+        // Let's passed undefined for imageUri to skip image update if we don't have it, 
+        // BUT we need to update settings.
+        // WidgetSyncService.syncWidgetData(cardName, imageUri, date)
+
+        // If we just want to update SETTINGS (theme/transparency), we can pass empty strings?
+        // The service logic:
+        // if (imageUri) ... process
+        // requestWidgetUpdate({ ... props })
+        // The props use "finalImageUri".
+
+        // We really want to "refresh" the widget with current card data + new settings.
+        // So we need that image URI.
+        // The only robust way to get image URI for a static asset (require) is `Image.resolveAssetSource`.
+        const { Image } = require('react-native');
+        const imageSourceId = getCardImage(cardId, 'en');
+        const resolvedImage = Image.resolveAssetSource(imageSourceId);
+        const imageUri = resolvedImage ? resolvedImage.uri : "";
+
+        await syncWidgetData(cardName, imageUri, undefined);
+      } else {
+        // Even if no card, we might want to sync settings (theme) for empty state?
+        // WidgetSyncService implementation requires cardName.
+        // Let's skip if no card.
       }
 
       Alert.alert(t('common.success'), t('settings.saved'));
@@ -317,6 +332,8 @@ export default function WidgetConfigScreen() {
             />
           </SettingRow>
         </Section>
+
+
 
         <SaveButton onPress={handleSave}>
           <SaveButtonText>{saving ? t('common.saving') : t('notes.save')}</SaveButtonText>

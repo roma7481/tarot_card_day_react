@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "tarot_card_day",
+    "name": "Tarot Card of the Day",
     "slug": "tarot_card_day",
-    "version": "1.0.0",
+    "version": "7.5.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,13 +17,18 @@
       "bundleIdentifier": "com.tarotcardday.app"
     },
     "android": {
+      "versionCode": 75,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.tarotcardday.app"
+      "package": "tarocard.crazybee.com.tarotcardoftheday",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "com.android.vending.BILLING"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -50,7 +55,7 @@
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-1763151471947181~1407697358",
-          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+          "iosAppId": "ca-app-pub-1763151471947181~1394638227"
         }
       ],
       [
@@ -59,7 +64,15 @@
           "androidSdkKey": "qnL2sJHf5VT2RFA26vgN2heXM-Lpfdo4FPKD_09zl9TnHlPVSmGcSRPIQKwcsZwKIWCJZ62BtOONX_7JNmPDX_",
           "iosSdkKey": "qnL2sJHf5VT2RFA26vgN2heXM-Lpfdo4FPKD_09zl9TnHlPVSmGcSRPIQKwcsZwKIWCJZ62BtOONX_7JNmPDX_"
         }
-      ]
-    ]
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/crashlytics",
+      "react-native-iap"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d6f7e04d-a0c8-43b1-914f-dcb50f930e11"
+      }
+    }
   }
 }

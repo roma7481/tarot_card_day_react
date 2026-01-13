@@ -220,6 +220,35 @@ export default function MainScreen() {
     }
   };
 
+  // Sync Widget on Load / Update
+  useEffect(() => {
+    const syncCurrentState = async () => {
+      if (isLoading) return;
+
+      if (dailyCard && isToday) {
+        // App has a card for today -> Sync it to widget
+        const imageSource = getCardImage(dailyCard.id, i18n.language);
+        // @ts-ignore
+        const { Image } = require('react-native');
+        const resolved = Image.resolveAssetSource(imageSource);
+
+        if (resolved?.uri) {
+          const dateStr = new Date().toLocaleDateString(i18n.language, { weekday: 'long', month: 'short', day: 'numeric' });
+          await syncWidgetData(dailyCard.name, resolved.uri, dateStr);
+        }
+      } else if (!dailyCard && isToday) {
+        // No card for today -> Sync "Tap to Reveal" state
+        // We pass empty strings or specific "empty" markers to sync service
+        // But our sync service might need a slight update to handle "empty" explicitly 
+        // OR we just sync the "Tap to Reveal" text.
+        // Actually, let's just sync the "Tap to Reveal" title and no image.
+        await syncWidgetData("Tap to Reveal", "", new Date().toLocaleDateString(i18n.language, { weekday: 'long', month: 'short', day: 'numeric' }));
+      }
+    };
+
+    syncCurrentState();
+  }, [dailyCard, isToday, isLoading, i18n.language]);
+
   if (!fontsLoaded || isLoading) {
     return <View style={{ flex: 1, backgroundColor: theme.colors.background[0] }} />;
   }
@@ -249,7 +278,10 @@ export default function MainScreen() {
 
           <View style={{ alignItems: 'center' }}>
             <DateText>
-              {new Date(currentDate).toLocaleDateString(i18n.language, { weekday: 'long', month: 'short', day: 'numeric' })}
+              {(() => {
+                const [y, m, d] = currentDate.split('-').map(Number);
+                return new Date(y, m - 1, d).toLocaleDateString(i18n.language, { weekday: 'long', month: 'short', day: 'numeric' });
+              })()}
             </DateText>
             <Headline style={{ fontSize: 24, marginBottom: 0 }}>
               {t('main.yourCard')}

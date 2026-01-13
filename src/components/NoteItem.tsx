@@ -66,7 +66,33 @@ export const NoteItem: React.FC<NoteItemProps> = ({ note, onEdit, onDelete }) =>
     return (
         <Container>
             <HeaderRow>
-                <DateText>{new Date(note.date).toLocaleDateString()} • {new Date(note.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</DateText>
+                <DateText>
+                    {(() => {
+                        // Note: note.date might be ISO string (YYYY-MM-DDTHH:mm:ss.sssZ) or just YYYY-MM-DD
+                        // If it returns -1 day, it's likely being parsed as UTC.
+                        // For legacy notes, it was YYYY-MM-DD. For new notes, it is ISO string.
+                        // We need to handle both safely.
+
+                        const d = new Date(note.date);
+                        // If it's pure date string (length 10), treat as local
+                        if (note.date.length === 10) {
+                            const [y, m, day] = note.date.split('-').map(Number);
+                            return new Date(y, m - 1, day).toLocaleDateString();
+                        }
+                        // Otherwise (ISO string), rely on system locale but ensure we don't double shift?
+                        // Actually, note.date for NEW notes is saved as ISOString in useNotes.ts logic: const dateStr = now.toISOString();
+                        // ISOString IS UTC. So 'new Date(iso)' will show local time correctly.
+                        // THE PROBLEM is likely legacy notes having "2026-01-10" which becomes UTC Midnight -> "2026-01-09 7pm EST".
+
+                        return d.toLocaleDateString();
+                    })()}
+                    {' • '}
+                    {(() => {
+                        // Time extraction (fallback to 12:00 PM if legacy date-only)
+                        if (note.date.length === 10) return '12:00 PM';
+                        return new Date(note.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    })()}
+                </DateText>
                 <ActionsRow>
                     <TouchableOpacity onPress={() => onEdit(note)}>
                         <Edit2 color={theme.colors.textSub} size={16} />

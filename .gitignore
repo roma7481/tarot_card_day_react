@@ -55,3 +55,10 @@ check_*.js
 dump_*.js
 inspect_db.js
 functions/test_gemini.js
+
+# Local Debug Artifacts
+*.apk
+*.apks
+*.aab
+install-apk.sh
+*.py

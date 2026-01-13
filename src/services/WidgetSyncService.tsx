@@ -41,6 +41,18 @@ export const syncWidgetData = async (cardName: string, imageUri: string, date?: 
             }
         }
 
+        // Cache data for the background task
+        // We need to persist exactly what we want the static handler to render
+        const cachedData = {
+            cardName,
+            imageUri: finalImageUri,
+            date: displayDate,
+            theme,
+            transparency,
+            showDate
+        };
+        await AsyncStorage.setItem('widget_cached_data', JSON.stringify(cachedData));
+
         await requestWidgetUpdate({
             widgetName: 'DailyTarot',
             renderWidget: () => (

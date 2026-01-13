@@ -3,6 +3,7 @@ import { View, FlatList, Text, TouchableOpacity, Dimensions, Modal, ActivityIndi
 import styled, { useTheme as useStyledTheme } from 'styled-components/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { usePremium } from '../hooks/usePremium';
 import { useTarotDatabase } from '../hooks/useTarotDatabase';
 import { getCardImage } from '../utils/cardImageMapping';
 import { colors } from '../theme/colors';
@@ -90,6 +91,7 @@ export const DeckScreen = () => {
   const { top } = useSafeAreaInsets();
   const theme = useStyledTheme();
   const { t, i18n } = useTranslation();
+  const { isPremium } = usePremium();
   const { getAllCards, isReady } = useTarotDatabase();
 
   const [cards, setCards] = useState<{ id: string; name: string }[]>([]);
@@ -153,12 +155,13 @@ export const DeckScreen = () => {
           initialNumToRender={12}
           maxToRenderPerBatch={6}
           ListHeaderComponent={
-            <View style={{ alignItems: 'center', marginBottom: 10, marginHorizontal: 4 }}>
-              <BannerAdWrapper
-                adMobUnitId={TestIds.BANNER}
-                appLovinUnitId="YOUR_APPLOVIN_BANNER_ID"
-              />
-            </View>
+            !isPremium ? (
+              <View style={{ alignItems: 'center', marginBottom: 10, marginHorizontal: 4 }}>
+                <BannerAdWrapper
+                  adMobUnitId={TestIds.BANNER}
+                />
+              </View>
+            ) : null
           }
         />
       )}

@@ -4,6 +4,7 @@ import { useNotesDatabase } from './useNotesDatabase';
 export interface Note {
     note_id: number;
     cardName: string;
+    card_id?: string; // Added via migration
     date: string;
     note: string;
     timeSaved: number;
@@ -15,13 +16,15 @@ export const useNotes = () => {
     const [loading, setLoading] = useState(false);
 
     // Fetch notes for a specific card
-    const getNotesForCard = useCallback(async (cardName: string) => {
+    const getNotesForCard = useCallback(async (cardIdOrName: string) => {
         if (!isReady || !db) return;
         setLoading(true);
         try {
+            // Try matching either card_id OR cardName for backward compat
+            // But prefer card_id
             const results = await db.getAllAsync<Note>(
-                'SELECT * FROM notes WHERE cardName = ? ORDER BY timeSaved DESC',
-                [cardName]
+                'SELECT * FROM notes WHERE card_id = ? OR cardName = ? ORDER BY timeSaved DESC',
+                [cardIdOrName, cardIdOrName]
             );
             setNotes(results);
         } catch (error) {
@@ -48,19 +51,21 @@ export const useNotes = () => {
     }, [db, isReady]);
 
     // Add a new note
-    const addNote = useCallback(async (cardName: string, text: string, onSuccess?: () => void) => {
+    const addNote = useCallback(async (cardId: string, text: string, onSuccess?: () => void) => {
         if (!isReady || !db) return;
         const now = new Date();
         const dateStr = now.toISOString();
         const timeSaved = Math.floor(now.getTime() / 1000);
 
         try {
-            const result = await db.runAsync(
-                'INSERT INTO notes (cardName, note, date, timeSaved) VALUES (?, ?, ?, ?)',
-                [cardName, text, dateStr, timeSaved]
+            // We store cardId in BOTH columns for now to be safe, or just use it as cardName 
+            // since our UI handles ID-as-ame gracefully now.
+            await db.runAsync(
+                'INSERT INTO notes (card_id, cardName, note, date, timeSaved) VALUES (?, ?, ?, ?, ?)',
+                [cardId, cardId, text, dateStr, timeSaved]
             );
             console.log('Note added with ID:', result.lastInsertRowId);
-            getNotesForCard(cardName);
+            getNotesForCard(cardId);
             if (onSuccess) onSuccess();
         } catch (error) {
             console.error('Error adding note:', error);
@@ -68,7 +73,7 @@ export const useNotes = () => {
     }, [db, isReady, getNotesForCard]);
 
     // Update a note
-    const updateNote = useCallback(async (noteId: number, cardName: string, newText: string, onSuccess?: () => void) => {
+    const updateNote = useCallback(async (noteId: number, cardId: string, newText: string, onSuccess?: () => void) => {
         if (!isReady || !db) return;
         try {
             await db.runAsync(
@@ -76,7 +81,7 @@ export const useNotes = () => {
                 [newText, noteId]
             );
             console.log('Note updated');
-            getNotesForCard(cardName);
+            getNotesForCard(cardId);
             if (onSuccess) onSuccess();
         } catch (error) {
             console.error('Error updating note:', error);
@@ -84,7 +89,7 @@ export const useNotes = () => {
     }, [db, isReady, getNotesForCard]);
 
     // Delete a note
-    const deleteNote = useCallback(async (noteId: number, cardName: string) => {
+    const deleteNote = useCallback(async (noteId: number, cardId: string) => {
         if (!isReady || !db) return;
         try {
             await db.runAsync(
@@ -92,7 +97,7 @@ export const useNotes = () => {
                 [noteId]
             );
             console.log('Note deleted');
-            getNotesForCard(cardName);
+            getNotesForCard(cardId);
         } catch (error) {
             console.error('Error deleting note:', error);
         }

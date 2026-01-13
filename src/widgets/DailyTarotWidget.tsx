@@ -56,11 +56,26 @@ export const DailyTarotWidget = ({
                 backgroundColor: bgColor as any,
                 borderRadius: 16,
                 padding: 12,
-                flexDirection: 'row',
+                flexDirection: 'column',
                 alignItems: 'center',
+                justifyContent: 'center', // Center vertically
             }}
             clickAction="OPEN_APP"
         >
+            {/* Date on Top */}
+            {showDate && (
+                <TextWidget
+                    text={date || "Daily Tarot"}
+                    style={{
+                        fontSize: 12,
+                        color: subtitleColor,
+                        marginBottom: 8,
+                        fontFamily: 'sans-serif-medium'
+                    }}
+                />
+            )}
+
+            {/* Card Image Middle */}
             {imageUri ? (
                 <ImageWidget
                     // @ts-ignore
@@ -68,7 +83,7 @@ export const DailyTarotWidget = ({
                     imageWidth={80}
                     imageHeight={120}
                     radius={8}
-                    style={{ marginRight: 16 }}
+                    style={{ marginBottom: 8 }}
                 />
             ) : (
                 <FlexWidget
@@ -79,7 +94,7 @@ export const DailyTarotWidget = ({
                         borderRadius: 8,
                         alignItems: 'center',
                         justifyContent: 'center',
-                        marginRight: 16,
+                        marginBottom: 8,
                     }}
                 >
                     <TextWidget
@@ -93,29 +108,18 @@ export const DailyTarotWidget = ({
                 </FlexWidget>
             )}
 
-            <FlexWidget style={{ flex: 1, flexDirection: 'column', justifyContent: 'center' }}>
-                {showDate && (
-                    <TextWidget
-                        text={date || "Daily Tarot"}
-                        style={{
-                            fontSize: 12,
-                            color: subtitleColor,
-                            marginBottom: 4,
-                            fontFamily: 'sans-serif-medium'
-                        }}
-                    />
-                )}
-                <TextWidget
-                    text={cardName || "Tap to Reveal Your Card"}
-                    style={{
-                        fontSize: 14,
-                        color: titleColor,
-                        fontWeight: 'bold',
-                        fontFamily: 'sans-serif-condensed'
-                    }}
-                    maxLines={2}
-                />
-            </FlexWidget>
+            {/* Card Name Bottom */}
+            <TextWidget
+                text={cardName || "Tap to Reveal"}
+                style={{
+                    fontSize: 14,
+                    color: titleColor,
+                    fontWeight: 'bold',
+                    fontFamily: 'sans-serif-condensed',
+                    textAlign: 'center'
+                }}
+                maxLines={2}
+            />
         </FlexWidget>
     );
 };

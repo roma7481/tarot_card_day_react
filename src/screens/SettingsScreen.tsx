@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styled, { useTheme as useStyledTheme } from 'styled-components/native';
 import { Switch, Modal, TouchableWithoutFeedback, View, TouchableOpacity, Linking, Text, ScrollView, Alert, Share, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BarChart3, Bot, Globe, Bell, Layout as WidgetIcon, Type, Palette, Shield, ChevronRight, Check, Share2 } from 'lucide-react-native';
+import { BarChart3, Bot, Globe, Bell, Layout as WidgetIcon, Type, Palette, Shield, ChevronRight, Check, Share2, HelpCircle } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
@@ -13,6 +13,8 @@ import { useNotifications } from '../hooks/useNotifications';
 import { Clock, Info, Mail } from 'lucide-react-native';
 import { OtherAppsCarousel } from '../components/OtherAppsCarousel';
 import * as Application from 'expo-application';
+import { usePremium } from '../hooks/usePremium';
+
 
 // --- Styled Components ---
 
@@ -235,6 +237,7 @@ export default function SettingsScreen() {
   const theme = useStyledTheme();
   const { themeId, setThemeId, availableThemes, textSize, setTextSize } = useTheme();
   const { t, i18n } = useTranslation();
+  const { isPremium } = usePremium();
 
   // Notification Hook
   const { enabled: notificationsEnabled, time: notificationTime, toggleNotifications, updateTime } = useNotifications();
@@ -244,9 +247,11 @@ export default function SettingsScreen() {
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [textSizeModalVisible, setTextSizeModalVisible] = useState(false);
   const [appInfoModalVisible, setAppInfoModalVisible] = useState(false);
+  const [widgetHelpModalVisible, setWidgetHelpModalVisible] = useState(false);
 
-  const toggleLanguage = (langCode: string) => {
+  const toggleLanguage = async (langCode: string) => {
     i18n.changeLanguage(langCode);
+    await import('@react-native-async-storage/async-storage').then(m => m.default.setItem('user-language', langCode));
     setLangModalVisible(false);
   };
 
@@ -299,32 +304,59 @@ export default function SettingsScreen() {
         <OtherAppsCarousel />
 
         {/* Premium Banner */}
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => navigation.navigate('Paywall' as never)}
-          style={{
+        {isPremium ? (
+          <View style={{
             marginHorizontal: 4,
             marginBottom: 24,
             marginTop: 8,
             overflow: 'hidden',
-            borderRadius: 20
-          }}
-        >
-          <LinearGradient
-            colors={['#fff0fc', '#f5eff5']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#d411d433' }}
+            borderRadius: 20,
+            backgroundColor: theme.colors.surface === '#ffffff' ? 'rgba(0,0,0,0.05)' : 'rgba(255, 255, 255, 0.05)',
+            borderWidth: 1,
+            borderColor: theme.colors.primary + '40'
+          }}>
+            <View style={{ padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View>
+                <Text style={{ fontFamily: 'Manrope_700Bold', color: theme.colors.primary, fontSize: 16, marginBottom: 4 }}>
+                  {t('settings.premiumActive') || "Premium Active"}
+                </Text>
+                <Text style={{ fontFamily: 'Manrope_500Medium', color: theme.colors.textSub, fontSize: 13 }}>
+                  {t('settings.allFeaturesUnlocked') || "All features unlocked"}
+                </Text>
+              </View>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.primary + '20', alignItems: 'center', justifyContent: 'center' }}>
+                <Shield color={theme.colors.primary} size={20} fill={theme.colors.primary + '40'} />
+              </View>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate('Paywall' as never)}
+            style={{
+              marginHorizontal: 4,
+              marginBottom: 24,
+              marginTop: 8,
+              overflow: 'hidden',
+              borderRadius: 20
+            }}
           >
-            <View>
-              <Text style={{ fontFamily: 'Manrope_800ExtraBold', color: '#d411d4', fontSize: 18, marginBottom: 4 }}>{t('settings.unlockPremium')}</Text>
-              <Text style={{ fontFamily: 'Manrope_500Medium', color: '#1b0d1b99', fontSize: 13 }}>{t('settings.premiumDesc')}</Text>
-            </View>
-            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#d411d41a', alignItems: 'center', justifyContent: 'center' }}>
-              <Shield color="#d411d4" size={20} fill="#d411d420" />
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={['#fff0fc', '#f5eff5']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#d411d433' }}
+            >
+              <View>
+                <Text style={{ fontFamily: 'Manrope_800ExtraBold', color: '#d411d4', fontSize: 18, marginBottom: 4 }}>{t('settings.unlockPremium')}</Text>
+                <Text style={{ fontFamily: 'Manrope_500Medium', color: '#1b0d1b99', fontSize: 13 }}>{t('settings.premiumDesc')}</Text>
+              </View>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#d411d41a', alignItems: 'center', justifyContent: 'center' }}>
+                <Shield color="#d411d4" size={20} fill="#d411d420" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
 
         {/* Preferences Section */}
         <SectionTitle>{t('settings.preferences')}</SectionTitle>
@@ -376,8 +408,13 @@ export default function SettingsScreen() {
             icon={<WidgetIcon color="#60A5FA" size={20} />}
             label={t('settings.widget')}
             value={t('settings.configure')}
-            isLast
             onPress={() => navigation.navigate('WidgetConfig' as never)}
+          />
+          <SettingsRow
+            icon={<HelpCircle color="#A78BFA" size={20} />}
+            label={t('widget.howToAdd')}
+            isLast
+            onPress={() => setWidgetHelpModalVisible(true)}
           />
         </SettingsGroup>
 
@@ -555,6 +592,53 @@ export default function SettingsScreen() {
                       {textSize === size && <Check size={20} color={theme.colors.primary} />}
                     </ThemeOptionItem>
                   ))}
+                </View>
+              </ModalContent>
+            </TouchableWithoutFeedback>
+          </ModalOverlay>
+        </Modal>
+
+        {/* Widget How To Add Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={widgetHelpModalVisible}
+          onRequestClose={() => setWidgetHelpModalVisible(false)}
+        >
+          <ModalOverlay activeOpacity={1} onPress={() => setWidgetHelpModalVisible(false)}>
+            <TouchableWithoutFeedback>
+              <ModalContent>
+                <View>
+                  <ModalTitle>{t('widget.howToAdd')}</ModalTitle>
+                  <View style={{ gap: 16 }}>
+                    {[1, 2, 3, 4, 5].map((step) => (
+                      <View key={step} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                        <View style={{
+                          width: 24, height: 24, borderRadius: 12, backgroundColor: theme.colors.surface,
+                          alignItems: 'center', justifyContent: 'center', marginRight: 12,
+                          borderWidth: 1, borderColor: theme.colors.border, marginTop: 0
+                        }}>
+                          <Text style={{ color: theme.colors.primary, fontFamily: 'Manrope_700Bold', fontSize: 12 }}>{step}</Text>
+                        </View>
+                        <Text style={{ color: theme.colors.textSub, fontFamily: 'Manrope_400Regular', fontSize: 14, flex: 1, lineHeight: 22 }}>
+                          {t(`widget.step${step}`)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => setWidgetHelpModalVisible(false)}
+                    style={{
+                      marginTop: 24,
+                      backgroundColor: theme.colors.primary,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      alignItems: 'center'
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontFamily: 'Manrope_700Bold', fontSize: 16 }}>{t('common.ok')}</Text>
+                  </TouchableOpacity>
                 </View>
               </ModalContent>
             </TouchableWithoutFeedback>

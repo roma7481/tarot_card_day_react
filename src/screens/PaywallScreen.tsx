@@ -1,18 +1,24 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components/native';
-import { View, Text, TouchableOpacity, ScrollView, Image, Dimensions, StatusBar, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, Dimensions, StatusBar, Alert, Platform, ActivityIndicator, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Sparkles, Moon, Diamond, ArrowRight, Check, MessageCircle, BarChart2, History, FileText } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { darkTheme } from '../theme/colors';
 import { useTranslation } from 'react-i18next';
+import { initConnection, fetchProducts, requestPurchase, purchaseUpdatedListener, purchaseErrorListener, finishTransaction, endConnection, getAvailablePurchases, Product, Purchase, PurchaseError } from 'react-native-iap';
+import { usePremium } from '../hooks/usePremium';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
-// --- Styled Components ---
+const PRODUCT_ID_PREMIUM = 'card_day_premium';
+const ITEM_SKUS = Platform.select({
+    android: [PRODUCT_ID_PREMIUM],
+    ios: [PRODUCT_ID_PREMIUM],
+}) as string[];
 
+// ... Styled Components (Keep existing) ...
 const Container = styled(LinearGradient)`
     flex: 1;
 `;
@@ -96,10 +102,6 @@ const Title = styled.Text`
     text-align: center;
     color: ${darkTheme.colors.text};
     line-height: 36px;
-`;
-
-const Highlight = styled.Text`
-    color: ${darkTheme.colors.primary};
 `;
 
 const Subtitle = styled.Text`
@@ -247,10 +249,162 @@ export default function PaywallScreen() {
     const { top, bottom } = useSafeAreaInsets();
     const navigation = useNavigation();
     const { t } = useTranslation();
+    const { checkPremium } = usePremium();
 
-    const handlePurchase = () => {
-        Alert.alert(t('paywall.title'), "Purchase would happen here.");
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [purchasing, setPurchasing] = useState(false);
+
+    useEffect(() => {
+        const initIAP = async () => {
+            try {
+                console.log('Initializing IAP connection...');
+                await initConnection();
+                console.log('IAP connected. Fetching products...', ITEM_SKUS);
+                const prods = await fetchProducts({ skus: ITEM_SKUS });
+                console.log('Fetched products:', JSON.stringify(prods, null, 2));
+                if (prods && prods.length > 0) {
+                    setProducts(prods);
+                } else {
+                    console.warn('No products fetched. Check Google Play Console configuration.');
+                }
+            } catch (err) {
+                console.warn('initIAP or fetchProducts error', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        initIAP();
+
+        const purchaseUpdateSubscription = purchaseUpdatedListener(
+            async (purchase: Purchase) => {
+                // Receipt location varies by platform
+                const receipt = purchase.transactionReceipt;
+
+                if (receipt) {
+                    try {
+                        await finishTransaction({ purchase, isConsumable: false });
+                        await checkPremium();
+                        Alert.alert("Success", "Purchase successful!");
+                        navigation.goBack();
+                    } catch (ackErr) {
+                        console.warn('ackErr', ackErr);
+                    }
+                } else {
+                    // Android might not have transactionReceipt in the top level object in some versions?
+                    // Verify purchase.purchaseToken for android?
+                    // For now, if purchase exists, we try to finish it.
+                    try {
+                        await finishTransaction({ purchase, isConsumable: false });
+                        await checkPremium();
+                        Alert.alert("Success", "Purchase successful!");
+                        navigation.goBack();
+                    } catch (e) { console.warn(e) }
+                }
+            },
+        );
+
+        const purchaseErrorSubscription = purchaseErrorListener(
+            (error: PurchaseError) => {
+                console.warn('purchaseErrorSubscription', error);
+                setPurchasing(false);
+
+                // user-cancelled is common on iOS/Android newer versions
+                // E_USER_CANCELLED is RNIap standard
+                // 1 is Android responseCode for User Canceled
+                const code = error.code || error.responseCode;
+
+                if (
+                    code === 'user-cancelled' ||
+                    code === 'E_USER_CANCELLED' ||
+                    code === 1 ||
+                    error.message === 'User cancelled the operation'
+                ) {
+                    // User cancelled, do nothing
+                    return;
+                }
+
+                Alert.alert("Purchase Failed", error.message);
+            },
+        );
+
+        return () => {
+            if (purchaseUpdateSubscription) {
+                purchaseUpdateSubscription.remove();
+            }
+            if (purchaseErrorSubscription) {
+                purchaseErrorSubscription.remove();
+            }
+            endConnection();
+        };
+    }, []);
+
+    const handlePurchase = async () => {
+        if (products.length === 0) {
+            Alert.alert("Error", "Products not loaded yet. Please check your internet connection.");
+            return;
+        }
+
+        // Use id (v14) or productId (legacy/types)
+        const product = products.find(p => (p.id === PRODUCT_ID_PREMIUM || p.productId === PRODUCT_ID_PREMIUM));
+        if (!product) {
+            Alert.alert("Error", "Product not found.");
+            return;
+        }
+
+        setPurchasing(true);
+        try {
+            // v14 request structure
+            const sku = product.id || product.productId;
+            await requestPurchase({
+                request: {
+                    apple: { sku },
+                    google: { skus: [sku] }
+                }
+            });
+        } catch (err) {
+            console.warn(err);
+            setPurchasing(false);
+        }
     };
+
+    const handleRestore = async () => {
+        setPurchasing(true);
+        try {
+            await initConnection(); // Ensure connected
+            const purchases = await getAvailablePurchases();
+            if (purchases.length > 0) {
+                await checkPremium();
+                Alert.alert("Restore Successful", "Your purchases have been restored.");
+                navigation.goBack();
+            } else {
+                Alert.alert("Restore", "No previous purchases found.");
+            }
+        } catch (err) {
+            console.warn(err);
+            Alert.alert("Error", "Failed to restore purchases.");
+        } finally {
+            setPurchasing(false);
+        }
+    };
+
+    // Use fetched product info if available, otherwise fallback (or loading)
+    // Cast to any because the type definition might lag behind the actual object structure in v14
+    const displayProduct = products.find(p => (p.id === PRODUCT_ID_PREMIUM || p.productId === PRODUCT_ID_PREMIUM)) as any;
+
+    let displayPrice = '$19.99';
+    if (displayProduct) {
+        if (displayProduct.oneTimePurchaseOfferDetailsAndroid && displayProduct.oneTimePurchaseOfferDetailsAndroid.length > 0) {
+            displayPrice = displayProduct.oneTimePurchaseOfferDetailsAndroid[0].formattedPrice;
+        } else if (displayProduct.displayPrice) {
+            displayPrice = displayProduct.displayPrice;
+        } else if (displayProduct.localizedPrice) {
+            displayPrice = displayProduct.localizedPrice;
+        }
+    }
+
+    const displayTitle = displayProduct ? displayProduct.title : t('paywall.pricing.badge');
 
     return (
         <Container
@@ -266,7 +420,7 @@ export default function PaywallScreen() {
                         <X color={darkTheme.colors.text} size={20} />
                     </CloseButton>
                     <HeaderTitle>{t('paywall.title')}</HeaderTitle>
-                    <RestoreButton>
+                    <RestoreButton onPress={handleRestore} disabled={purchasing}>
                         <RestoreText>{t('paywall.restore')}</RestoreText>
                     </RestoreButton>
                 </Header>
@@ -362,20 +516,30 @@ export default function PaywallScreen() {
                             <BadgeText>{t('paywall.pricing.badge')}</BadgeText>
                         </Badge>
                         <PriceRow>
-                            <PriceText>$19.99</PriceText>
+                            {loading ? (
+                                <ActivityIndicator color={darkTheme.colors.text} />
+                            ) : (
+                                <PriceText>{displayPrice}</PriceText>
+                            )}
                             <PriceSub>{t('paywall.pricing.lifetime')}</PriceSub>
                         </PriceRow>
                     </PricingInfo>
 
-                    <CTAButton onPress={handlePurchase} activeOpacity={0.9}>
-                        <CTAButtonText>{t('paywall.cta')}</CTAButtonText>
-                        <ArrowRight color="#fff" size={24} />
+                    <CTAButton onPress={handlePurchase} activeOpacity={0.9} disabled={purchasing || loading}>
+                        {purchasing ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
+                            <>
+                                <CTAButtonText>{t('paywall.cta')}</CTAButtonText>
+                                <ArrowRight color="#fff" size={24} />
+                            </>
+                        )}
                     </CTAButton>
 
                     <FooterLinks>
-                        <LinkText>{t('paywall.links.privacy')}</LinkText>
-                        <LinkText>•</LinkText>
-                        <LinkText>{t('paywall.links.terms')}</LinkText>
+                        <TouchableOpacity onPress={() => Linking.openURL('https://cbeeapps.wixsite.com/cardtarot')}>
+                            <LinkText>{t('paywall.links.privacy')}</LinkText>
+                        </TouchableOpacity>
                     </FooterLinks>
                     <View style={{ height: bottom }} />
                 </Footer>

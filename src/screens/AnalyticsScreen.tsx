@@ -4,12 +4,14 @@ import styled, { useTheme } from 'styled-components/native';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useHistory, DailyDraw } from '../hooks/useHistory';
 import { calculateStats, CardStats } from '../utils/cardStats';
 import { getCardImage } from '../utils/cardImageMapping';
 import { CARD_NAME_MAPPING } from '../data/cardNameMapping';
-import { BarChart3, PieChart, TrendingUp } from 'lucide-react-native';
+import { BarChart3, PieChart, TrendingUp, Lock } from 'lucide-react-native';
+import { usePremium } from '../hooks/usePremium';
+import { Platform, StyleSheet } from 'react-native';
 
 const Container = styled(LinearGradient)`
   flex: 1;
@@ -17,6 +19,64 @@ const Container = styled(LinearGradient)`
 
 const Content = styled.ScrollView`
   padding: 24px;
+`;
+
+const LockOverlay = styled.View`
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0,0,0,0.6); 
+    z-index: 100;
+    padding: 20px;
+`;
+
+const LockContainer = styled.View`
+    background-color: ${props => props.theme.colors.surface};
+    padding: 24px;
+    border-radius: 20px;
+    align-items: center;
+    width: 100%;
+    max-width: 340px; 
+    border-width: 1px;
+    border-color: ${props => props.theme.colors.border};
+`;
+
+const LockTitle = styled.Text`
+    color: ${props => props.theme.colors.text};
+    font-family: 'Manrope_700Bold';
+    font-size: 20px;
+    margin-top: 16px;
+    margin-bottom: 8px;
+    text-align: center;
+`;
+
+const LockDescription = styled.Text`
+    color: ${props => props.theme.colors.textSub};
+    font-family: 'Manrope_400Regular';
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 24px;
+    line-height: 20px;
+`;
+
+const UnlockButton = styled.TouchableOpacity`
+    background-color: ${props => props.theme.colors.primary};
+    padding-vertical: 12px;
+    padding-horizontal: 16px;
+    border-radius: 24px;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+`;
+
+const UnlockButtonText = styled.Text`
+    color: #fff;
+    font-family: 'Manrope_700Bold';
+    font-size: 16px;
 `;
 
 const Header = styled.View`
@@ -103,6 +163,8 @@ export default function AnalyticsScreen() {
     const { top } = useSafeAreaInsets();
     const theme = useTheme();
     const { t } = useTranslation();
+    const navigation = useNavigation();
+    const { isPremium } = usePremium();
     const { getHistory, isReady } = useHistory();
     const [stats, setStats] = useState<CardStats | null>(null);
     const [loading, setLoading] = useState(true);
@@ -123,111 +185,129 @@ export default function AnalyticsScreen() {
 
     if (loading) return <Container colors={theme.colors.background as any} />;
 
-    if (!stats || stats.total === 0) {
-        return (
-            <Container colors={theme.colors.background as any}>
-                <Content contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <Header style={{ marginTop: top + 20 }}>
-                        <Title>Soul Analytics</Title>
-                    </Header>
-                    <TrendingUp size={48} color={theme.colors.textSub} style={{ marginBottom: 16, opacity: 0.5 }} />
-                    <SectionTitle style={{ textAlign: 'center' }}>{t('analytics.noData')}</SectionTitle>
-                    <BarLabel style={{ textAlign: 'center' }}>
-                        {t('analytics.noDataDesc')}
-                    </BarLabel>
-                </Content>
-            </Container>
-        );
-    }
-
-    const maxSuit = Math.max(stats.suits.wands, stats.suits.cups, stats.suits.swords, stats.suits.pentacles) || 1;
-
     return (
         <Container colors={theme.colors.background as any}>
-            <Content>
+            {!isPremium && (
+                <LockOverlay>
+                    <LockContainer>
+                        <Lock size={48} color={theme.colors.gold} />
+                        <LockTitle>{t('settings.premiumTitle') || 'Premium Feature'}</LockTitle>
+                        <LockDescription>
+                            {t('analytics.lockDescription') || 'Unlock comprehensive Tarot analytics and discover deeper patterns in your spiritual journey.'}
+                        </LockDescription>
+                        <UnlockButton onPress={() => navigation.navigate('Paywall' as never)}>
+                            <UnlockButtonText>{t('settings.unlockPremium') || 'Unlock Premium'}</UnlockButtonText>
+                        </UnlockButton>
+                    </LockContainer>
+                </LockOverlay>
+            )}
+
+            <Content
+                scrollEnabled={isPremium}
+                style={{ opacity: isPremium ? 1 : 0.3 }}
+            >
                 <Header style={{ marginTop: top + 20 }}>
                     <Title>Soul Analytics</Title>
                 </Header>
 
-                {/* Major / Minor Balance */}
-                <Section>
-                    <SectionTitle>{t('analytics.majorMinor')}</SectionTitle>
-                    <BarContainer>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                            <BarLabel>{stats.majors} {t('analytics.major')}</BarLabel>
-                            <BarLabel>{stats.minors} {t('analytics.minor')}</BarLabel>
+                {(!stats || stats.total === 0) ? (
+                    <>
+                        <View style={{ alignItems: 'center', marginTop: 40 }}>
+                            <TrendingUp size={48} color={theme.colors.textSub} style={{ marginBottom: 16, opacity: 0.5 }} />
+                            <SectionTitle style={{ textAlign: 'center' }}>{t('analytics.noData')}</SectionTitle>
+                            <BarLabel style={{ textAlign: 'center' }}>
+                                {t('analytics.noDataDesc')}
+                            </BarLabel>
                         </View>
-                        <View style={{ flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden' }}>
-                            <View style={{ flex: stats.majors, backgroundColor: theme.colors.gold }} />
-                            <View style={{ flex: stats.minors, backgroundColor: theme.colors.textSub }} />
-                        </View>
-                        <BarLabel style={{ marginTop: 8 }}>
-                            {stats.majors > stats.minors ? t('analytics.focusMajor') : t('analytics.focusMinor')}
-                        </BarLabel>
-                    </BarContainer>
-                </Section>
+                        {/* Mock data for preview if no real data and locked? User asked for preview. 
+                            But if they have no data, preview is empty. 
+                            Let's keep existing helper 'noData' but maybe show empty charts as placeholder if locked? 
+                            For now, stick to covering what's there. if empty, they lock an empty screen basically.
+                         */}
+                    </>
+                ) : (
+                    <>
+                        {/* Major / Minor Balance */}
+                        <Section>
+                            <SectionTitle>{t('analytics.majorMinor')}</SectionTitle>
+                            <BarContainer>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                                    <BarLabel>{stats.majors} {t('analytics.major')}</BarLabel>
+                                    <BarLabel>{stats.minors} {t('analytics.minor')}</BarLabel>
+                                </View>
+                                <View style={{ flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden' }}>
+                                    <View style={{ flex: stats.majors, backgroundColor: theme.colors.gold }} />
+                                    <View style={{ flex: stats.minors, backgroundColor: theme.colors.textSub }} />
+                                </View>
+                                <BarLabel style={{ marginTop: 8 }}>
+                                    {stats.majors > stats.minors ? t('analytics.focusMajor') : t('analytics.focusMinor')}
+                                </BarLabel>
+                            </BarContainer>
+                        </Section>
 
-                {/* Element Balance */}
-                <Section>
-                    <SectionTitle>{t('analytics.elemental')}</SectionTitle>
+                        {/* Element Balance */}
+                        <Section>
+                            <SectionTitle>{t('analytics.elemental')}</SectionTitle>
 
-                    <BarContainer>
-                        <BarLabel>{t('analytics.fire')} — {stats.suits.wands}</BarLabel>
-                        <BarBackground>
-                            <BarFill
-                                colors={['#FF512F', '#DD2476']}
-                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                                width={(stats.suits.wands / maxSuit) * 100}
-                            />
-                        </BarBackground>
-                    </BarContainer>
+                            <BarContainer>
+                                <BarLabel>{t('analytics.fire')} — {stats.suits.wands}</BarLabel>
+                                <BarBackground>
+                                    <BarFill
+                                        colors={['#FF512F', '#DD2476']}
+                                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                        width={(stats.suits.wands / (Math.max(stats.suits.wands, stats.suits.cups, stats.suits.swords, stats.suits.pentacles) || 1)) * 100}
+                                    />
+                                </BarBackground>
+                            </BarContainer>
 
-                    <BarContainer>
-                        <BarLabel>{t('analytics.water')} — {stats.suits.cups}</BarLabel>
-                        <BarBackground>
-                            <BarFill
-                                colors={['#36D1DC', '#5B86E5']}
-                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                                width={(stats.suits.cups / maxSuit) * 100}
-                            />
-                        </BarBackground>
-                    </BarContainer>
+                            <BarContainer>
+                                <BarLabel>{t('analytics.water')} — {stats.suits.cups}</BarLabel>
+                                <BarBackground>
+                                    <BarFill
+                                        colors={['#36D1DC', '#5B86E5']}
+                                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                        width={(stats.suits.cups / (Math.max(stats.suits.wands, stats.suits.cups, stats.suits.swords, stats.suits.pentacles) || 1)) * 100}
+                                    />
+                                </BarBackground>
+                            </BarContainer>
 
-                    <BarContainer>
-                        <BarLabel>{t('analytics.air')} — {stats.suits.swords}</BarLabel>
-                        <BarBackground>
-                            <BarFill
-                                colors={['#E0EAFC', '#CFDEF3']}
-                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                                width={(stats.suits.swords / maxSuit) * 100}
-                            />
-                        </BarBackground>
-                    </BarContainer>
+                            <BarContainer>
+                                <BarLabel>{t('analytics.air')} — {stats.suits.swords}</BarLabel>
+                                <BarBackground>
+                                    <BarFill
+                                        colors={['#E0EAFC', '#CFDEF3']}
+                                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                        width={(stats.suits.swords / (Math.max(stats.suits.wands, stats.suits.cups, stats.suits.swords, stats.suits.pentacles) || 1)) * 100}
+                                    />
+                                </BarBackground>
+                            </BarContainer>
 
-                    <BarContainer>
-                        <BarLabel>{t('analytics.earth')} — {stats.suits.pentacles}</BarLabel>
-                        <BarBackground>
-                            <BarFill
-                                colors={['#11998e', '#38ef7d']}
-                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                                width={(stats.suits.pentacles / maxSuit) * 100}
-                            />
-                        </BarBackground>
-                    </BarContainer>
-                </Section>
+                            <BarContainer>
+                                <BarLabel>{t('analytics.earth')} — {stats.suits.pentacles}</BarLabel>
+                                <BarBackground>
+                                    <BarFill
+                                        colors={['#11998e', '#38ef7d']}
+                                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                        width={(stats.suits.pentacles / (Math.max(stats.suits.wands, stats.suits.cups, stats.suits.swords, stats.suits.pentacles) || 1)) * 100}
+                                    />
+                                </BarBackground>
+                            </BarContainer>
+                        </Section>
 
-                {/* Most Drawn */}
-                {stats.mostDrawn && (
-                    <Section>
-                        <SectionTitle>{t('analytics.mostFrequent')}</SectionTitle>
-                        <MostDrawnContainer>
-                            <MostDrawnImage source={getCardImage(stats.mostDrawn, 'en')} />
-                            <MostDrawnInfo>
-                                <MostDrawnName>{stats.mostDrawnName || CARD_NAME_MAPPING[stats.mostDrawn]}</MostDrawnName>
-                                <MostDrawnCount>{t('analytics.drawnTimes', { count: stats.mostDrawnCount })}</MostDrawnCount>
-                            </MostDrawnInfo>
-                        </MostDrawnContainer>
-                    </Section>
+                        {/* Most Drawn */}
+                        {stats.mostDrawn && (
+                            <Section>
+                                <SectionTitle>{t('analytics.mostFrequent')}</SectionTitle>
+                                <MostDrawnContainer>
+                                    <MostDrawnImage source={getCardImage(stats.mostDrawn, 'en')} />
+                                    <MostDrawnInfo>
+                                        <MostDrawnName>{stats.mostDrawnName || CARD_NAME_MAPPING[stats.mostDrawn]}</MostDrawnName>
+                                        <MostDrawnCount>{t('analytics.drawnTimes', { count: stats.mostDrawnCount })}</MostDrawnCount>
+                                    </MostDrawnInfo>
+                                </MostDrawnContainer>
+                            </Section>
+                        )}
+                    </>
                 )}
 
                 <View style={{ height: 100 }} />
