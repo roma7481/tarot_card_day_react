@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, ScrollView, Text, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
 import styled, { useTheme as useStyledTheme } from 'styled-components/native';
 import Animated, {
     useSharedValue,
@@ -39,9 +39,11 @@ import { usePremium } from '../hooks/usePremium';
 import { useCanAccessNotes } from '../hooks/useCanAccessNotes';
 import { NoteItem } from './NoteItem';
 import { JournalModal } from './JournalModal';
+import { usePromoFlags } from '../hooks/usePromoFlags';
 
 import { adService } from '../services/AdService';
 import { NativeAdWrapper } from './ads/NativeAdWrapper';
+import { analyticsService } from '../services/AnalyticsService';
 
 // --- Types ---
 
@@ -265,7 +267,8 @@ const ChatButtonText = styled.Text`
 interface AccordionProps {
     title: string;
     icon: React.ReactNode;
-    content: string;
+    content: string | React.ReactNode;
+    shareText?: string;
     isOpen?: boolean;
 }
 
@@ -273,7 +276,7 @@ import { Share } from 'react-native';
 
 // ...
 
-const AccordionItem = ({ title, icon, content, isOpen: initialOpen = false }: AccordionProps) => {
+const AccordionItem = ({ title, icon, content, shareText, isOpen: initialOpen = false }: AccordionProps) => {
     const [isOpen, setIsOpen] = useState(initialOpen);
     const heightValue = useSharedValue(0);
     const rotateValue = useSharedValue(0);
@@ -288,8 +291,11 @@ const AccordionItem = ({ title, icon, content, isOpen: initialOpen = false }: Ac
 
     const handleShare = async () => {
         try {
+            const textToShare = shareText || (typeof content === 'string' ? content : '');
+            if (!textToShare) return;
+
             await Share.share({
-                message: `${title}\n\n${content}`,
+                message: `${title}\n\n${textToShare}`,
             });
         } catch (error) {
             console.log('Error sharing:', error);
@@ -330,9 +336,13 @@ const AccordionItem = ({ title, icon, content, isOpen: initialOpen = false }: Ac
 
             {isOpen && (
                 <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)}>
-                    <AccordionText size={textSize}>
-                        {content}
-                    </AccordionText>
+                    {typeof content === 'string' ? (
+                        <AccordionText size={textSize}>
+                            {content}
+                        </AccordionText>
+                    ) : (
+                        content
+                    )}
                     <View style={{ alignItems: 'flex-end', paddingRight: 18, paddingBottom: 12 }}>
                         <TouchableOpacity onPress={handleShare} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                             <Share2 color={theme.colors.gold} size={18} />
@@ -350,9 +360,11 @@ export const RevealedCard: React.FC<Props> = ({ card, onBack, embed = false }) =
     const { top } = useSafeAreaInsets();
     const navigation = useNavigation();
     const theme = useStyledTheme();
+    const { textSize } = useTheme();
     const { t, i18n } = useTranslation();
     const { getCardInterpretation, isReady } = useTarotDatabase();
     const [localizedData, setLocalizedData] = useState<LocalizedCardData | null>(null);
+    const { flags, setPromoClicked } = usePromoFlags();
 
     const { notes, getNotesForCard, addNote, updateNote, deleteNote } = useNotes();
     const [isNoteModalVisible, setNoteModalVisible] = useState(false);
@@ -360,12 +372,20 @@ export const RevealedCard: React.FC<Props> = ({ card, onBack, embed = false }) =
     const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
 
     useEffect(() => {
+        let isMounted = true;
         const fetchData = async () => {
             if (!isReady) return;
-            const data = await getCardInterpretation(card.id);
-            setLocalizedData(data);
+            try {
+                const data = await getCardInterpretation(card.id);
+                if (isMounted) {
+                    setLocalizedData(data);
+                }
+            } catch (error) {
+                console.warn("Failed to fetch localized card data:", error);
+            }
         };
         fetchData();
+        return () => { isMounted = false; };
     }, [card.id, i18n.language, isReady]);
 
     useEffect(() => {
@@ -388,6 +408,7 @@ export const RevealedCard: React.FC<Props> = ({ card, onBack, embed = false }) =
     };
 
     const handleEditNote = (note: any) => {
+        console.log('Opening note (RevealedCard). Date:', note.date, 'TimeSaved:', note.timeSaved);
         if (!canAccess) {
             navigation.navigate('Paywall' as never);
             return;
@@ -423,12 +444,81 @@ export const RevealedCard: React.FC<Props> = ({ card, onBack, embed = false }) =
             // Create mixed list with Ads
             const elements: React.ReactNode[] = [];
             sortedKeys.forEach((key, index) => {
+                const textContent = localizedData[key as keyof LocalizedCardData] as string;
+                let finalContent: React.ReactNode = textContent;
+
+                if (key === 'general' && !flags.magic) {
+                    finalContent = (
+                        <View>
+                            <AccordionText size={textSize}>{textContent}</AccordionText>
+                            <View style={{ marginTop: 16, paddingHorizontal: 18, paddingBottom: 18 }}>
+                                <Text style={{ color: theme.colors.textSub, fontFamily: 'Manrope_400Regular', fontSize: textSize === 'large' ? 20 : 16, lineHeight: textSize === 'large' ? 30 : 24 }}>
+                                    {t('promo.magicText')}
+                                    <Text
+                                        style={{ color: theme.colors.gold, textDecorationLine: 'underline', fontFamily: 'Manrope_700Bold' }}
+                                        onPress={() => {
+                                            setPromoClicked('magic');
+                                            analyticsService.logEvent('promo_link_click', { promo_name: 'tarot_magic' });
+                                            Linking.openURL('https://play.google.com/store/apps/details?id=gadanie.dailymistika.ru.gadanie');
+                                        }}
+                                    >
+                                        {t('promo.magicLink')}
+                                    </Text>
+                                </Text>
+                            </View>
+                        </View>
+                    );
+                } else if ((key === 'career' || key === 'health') && !flags.healing) {
+                    finalContent = (
+                        <View>
+                            <AccordionText size={textSize}>{textContent}</AccordionText>
+                            <View style={{ marginTop: 16, paddingHorizontal: 18, paddingBottom: 18 }}>
+                                <Text style={{ color: theme.colors.textSub, fontFamily: 'Manrope_400Regular', fontSize: textSize === 'large' ? 20 : 16, lineHeight: textSize === 'large' ? 30 : 24 }}>
+                                    {t('promo.healingText')}
+                                    <Text
+                                        style={{ color: theme.colors.gold, textDecorationLine: 'underline', fontFamily: 'Manrope_700Bold' }}
+                                        onPress={() => {
+                                            setPromoClicked('healing');
+                                            analyticsService.logEvent('promo_link_click', { promo_name: 'healing_sounds' });
+                                            Linking.openURL('https://play.google.com/store/apps/details?id=com.dailymistika.healingsounds');
+                                        }}
+                                    >
+                                        {t('promo.healingLink')}
+                                    </Text>
+                                </Text>
+                            </View>
+                        </View>
+                    );
+                } else if (key === 'love' && Platform.OS === 'android' && !flags.astrology) {
+                    finalContent = (
+                        <View>
+                            <AccordionText size={textSize}>{textContent}</AccordionText>
+                            <View style={{ marginTop: 16, paddingHorizontal: 18, paddingBottom: 18 }}>
+                                <Text style={{ color: theme.colors.textSub, fontFamily: 'Manrope_400Regular', fontSize: textSize === 'large' ? 20 : 16, lineHeight: textSize === 'large' ? 30 : 24 }}>
+                                    {t('promo.astrologyText')}
+                                    <Text
+                                        style={{ color: theme.colors.gold, textDecorationLine: 'underline', fontFamily: 'Manrope_700Bold' }}
+                                        onPress={() => {
+                                            setPromoClicked('astrology');
+                                            analyticsService.logEvent('promo_link_click', { promo_name: 'astrology_transits' });
+                                            Linking.openURL('https://play.google.com/store/apps/details?id=com.cbeeapps.aiastrology');
+                                        }}
+                                    >
+                                        {t('promo.astrologyLink')}
+                                    </Text>
+                                </Text>
+                            </View>
+                        </View>
+                    );
+                }
+
                 elements.push(
                     <AccordionItem
                         key={key}
                         title={t(`card.${key}`)}
                         icon={getCategoryIcon(key, theme.colors.gold)}
-                        content={localizedData[key as keyof LocalizedCardData] as string}
+                        content={finalContent}
+                        shareText={textContent}
                         isOpen={index === 0}
                     />
                 );
@@ -467,10 +557,7 @@ export const RevealedCard: React.FC<Props> = ({ card, onBack, embed = false }) =
                     }}>
                         <ArrowLeft color={theme.colors.icon} size={20} />
                     </IconButton>
-                    <HeaderTitle>{t('card.dailyWisdom')}</HeaderTitle>
-                    <IconButton>
-                        <Share2 color={theme.colors.icon} size={18} />
-                    </IconButton>
+
                 </Header>
             )}
 
@@ -478,14 +565,14 @@ export const RevealedCard: React.FC<Props> = ({ card, onBack, embed = false }) =
                 <HeroSection>
                     <CardFrame>
                         <CardImage source={getCardImage(card.id, i18n.language)} resizeMode="cover" />
-                        <InnerGloss />
-                        <InnerBorder />
+                        <InnerGloss colors={['transparent', 'transparent']} />
+                        <InnerBorder colors={['transparent', 'transparent']} />
                     </CardFrame>
 
                     <CardTitle>{localizedData ? localizedData.name : card.name}</CardTitle>
                     <TagsRow>
                         <DividerDot colors={['#FFD700', '#DAA520']} />
-                        <TagText style={{ marginHorizontal: 8 }}>Intuition • Mystery</TagText>
+                        <TagText style={{ marginHorizontal: 8 }}>{t('tags.intuition')} • {t('tags.mystery')}</TagText>
                         <DividerDot colors={['#FFD700', '#DAA520']} />
                     </TagsRow>
 
@@ -493,7 +580,10 @@ export const RevealedCard: React.FC<Props> = ({ card, onBack, embed = false }) =
                         if (!isPremium) {
                             navigation.navigate('Paywall' as never);
                         } else {
-                            navigation.navigate('Chat' as never);
+                            navigation.navigate('Chat' as never, {
+                                cardId: card.id,
+                                cardName: localizedData ? localizedData.name : card.name
+                            } as never);
                         }
                     }}>
                         <Bot size={20} color="#fff" />

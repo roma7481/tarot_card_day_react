@@ -54,13 +54,14 @@ export const useNotes = () => {
     const addNote = useCallback(async (cardId: string, text: string, onSuccess?: () => void) => {
         if (!isReady || !db) return;
         const now = new Date();
-        const dateStr = now.toISOString();
+        // Store as YYYY-MM-DD to match legacy format
+        const dateStr = now.toISOString().split('T')[0];
         const timeSaved = Math.floor(now.getTime() / 1000);
 
         try {
             // We store cardId in BOTH columns for now to be safe, or just use it as cardName 
             // since our UI handles ID-as-ame gracefully now.
-            await db.runAsync(
+            const result = await db.runAsync(
                 'INSERT INTO notes (card_id, cardName, note, date, timeSaved) VALUES (?, ?, ?, ?, ?)',
                 [cardId, cardId, text, dateStr, timeSaved]
             );

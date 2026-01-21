@@ -3,25 +3,45 @@ import { View, TouchableOpacity, ScrollView } from 'react-native';
 import styled, { useTheme } from 'styled-components/native'; // Styled Components theme
 import { useTheme as useAppTheme } from '../theme/ThemeContext'; // App Logic
 import { LinearGradient } from 'expo-linear-gradient';
-import { Check, Type } from 'lucide-react-native';
+import { Check, Type, ArrowLeft } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled(LinearGradient)`
   flex: 1;
 `;
 
 const Content = styled.ScrollView`
+  flex: 1;
   padding: 24px;
 `;
 
 const Header = styled.View`
-  padding-top: 60px;
-  margin-bottom: 24px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding-horizontal: 16px;
+  padding-vertical: 12px;
+  background-color: transparent;
+  z-index: 50;
 `;
 
-const Title = styled.Text`
+const IconButton = styled.TouchableOpacity`
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  background-color: ${props => props.theme.colors.surface === '#ffffff' ? 'rgba(0,0,0,0.05)' : 'rgba(255, 255, 255, 0.05)'};
+  border-width: 1px;
+  border-color: ${props => props.theme.colors.border};
+`;
+
+const HeaderTitle = styled.Text`
   color: ${props => props.theme.colors.text};
   font-family: 'Manrope_700Bold';
-  font-size: 32px;
+  font-size: 18px;
 `;
 
 const Section = styled.View`
@@ -60,8 +80,8 @@ const ThemePreview = styled(LinearGradient)`
     justify-content: space-between;
 `;
 
-const ThemeName = styled.Text<{ isSelected: boolean }>`
-    color: #fff; /* Always white on gradient */
+const ThemeName = styled.Text<{ isSelected: boolean; isLight?: boolean }>`
+    color: ${props => props.isLight ? '#000000' : '#fff'}; /* Black for light themes, white otherwise */
     font-family: 'Manrope_700Bold';
     font-size: 16px;
 `;
@@ -98,26 +118,39 @@ const SizeLabel = styled.Text`
 export default function AppearanceScreen() {
     const theme = useTheme(); // Styled theme
     const { themeId, setThemeId, availableThemes, textSize, setTextSize } = useAppTheme(); // Logic
+    const navigation = useNavigation();
+    const { top } = useSafeAreaInsets();
+    const { t } = useTranslation();
 
     return (
         <Container colors={theme.colors.background as any}>
+            <Header style={{ marginTop: top }}>
+                <IconButton onPress={() => navigation.goBack()}>
+                    <ArrowLeft color={theme.colors.icon} size={24} />
+                </IconButton>
+                <HeaderTitle>{t('appearance.title')}</HeaderTitle>
+                <View style={{ width: 40 }} />
+            </Header>
+
             <Content>
-                <Header>
-                    <Title>Appearance</Title>
-                </Header>
 
                 <Section>
-                    <SectionTitle>App Theme</SectionTitle>
+                    <SectionTitle>{t('appearance.theme')}</SectionTitle>
                     <ThemeGrid>
-                        {availableThemes.map((t) => (
+                        {availableThemes.map((themeItem) => (
                             <ThemeCard
-                                key={t.id}
-                                isSelected={themeId === t.id}
-                                onPress={() => setThemeId(t.id)}
+                                key={themeItem.id}
+                                isSelected={themeId === themeItem.id}
+                                onPress={() => setThemeId(themeItem.id)}
                             >
-                                <ThemePreview colors={t.theme.colors.background as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                                    <ThemeName isSelected={themeId === t.id}>{t.name}</ThemeName>
-                                    {themeId === t.id && (
+                                <ThemePreview colors={themeItem.theme.colors.background as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                                    <ThemeName
+                                        isSelected={themeId === themeItem.id}
+                                        isLight={themeItem.id === 'light'}
+                                    >
+                                        {t(`themes.${themeItem.id}`, { defaultValue: themeItem.name })}
+                                    </ThemeName>
+                                    {themeId === themeItem.id && (
                                         <CheckCircle>
                                             <Check size={14} color="#fff" strokeWidth={3} />
                                         </CheckCircle>
@@ -129,15 +162,15 @@ export default function AppearanceScreen() {
                 </Section>
 
                 <Section>
-                    <SectionTitle>Text Size</SectionTitle>
+                    <SectionTitle>{t('appearance.textSize')}</SectionTitle>
                     <SizeOption isSelected={textSize === 'medium'} onPress={() => setTextSize('medium')}>
                         <Type size={20} color={theme.colors.text} />
-                        <SizeLabel>Medium (Default)</SizeLabel>
+                        <SizeLabel>{t('appearance.textMedium')}</SizeLabel>
                         {textSize === 'medium' && <Check size={20} color={theme.colors.gold} />}
                     </SizeOption>
                     <SizeOption isSelected={textSize === 'large'} onPress={() => setTextSize('large')}>
                         <Type size={24} color={theme.colors.text} />
-                        <SizeLabel style={{ fontSize: 18 }}>Large</SizeLabel>
+                        <SizeLabel style={{ fontSize: 18 }}>{t('appearance.textLarge')}</SizeLabel>
                         {textSize === 'large' && <Check size={20} color={theme.colors.gold} />}
                     </SizeOption>
                 </Section>

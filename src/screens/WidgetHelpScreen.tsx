@@ -90,6 +90,8 @@ export default function WidgetHelpScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
 
+  console.log('[WidgetHelpScreen] Rendering steps: [1, 2, 3, 4, 5, 6]');
+
   return (
     <Container
       colors={(theme?.colors?.background || ['#000000', '#000000']) as any}
@@ -106,7 +108,7 @@ export default function WidgetHelpScreen() {
 
       <Content>
         <Section>
-          {[1, 2, 3, 4, 5].map((step) => (
+          {[1, 2, 3, 4, 5, 6].map((step) => (
             <StepRow key={step}>
               <StepCircle>
                 <StepNumber>{step}</StepNumber>

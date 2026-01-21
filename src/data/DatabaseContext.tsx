@@ -233,6 +233,8 @@ export const DatabaseProvider: React.FC<{ children: ReactNode }> = ({ children }
                     currentVersion = 3;
                 }
 
+
+
                 // --- LEGACY TABLE MIGRATION (TABLE_NAME_NOTE -> notes) ---
                 try {
                     const legacyTableExists = await database.getFirstAsync<{ name: string }>(

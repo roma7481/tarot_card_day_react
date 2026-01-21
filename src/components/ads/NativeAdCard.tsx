@@ -4,6 +4,7 @@ import { NativeAd, NativeAdView, TestIds, NativeAsset, NativeAssetType } from 'r
 import AppLovinMAX, { AdFormat, AdView } from 'react-native-applovin-max';
 import styled, { useTheme as useStyledTheme } from 'styled-components/native';
 import { ThemeType as Theme } from '../../theme/colors';
+import { usePremium } from '../../hooks/usePremium';
 
 type AdVariant = 'default' | 'compact' | 'small';
 
@@ -79,9 +80,11 @@ export const NativeAdCard = ({ variant = 'default', containerStyle }: NativeAdCa
   const [nativeAd, setNativeAd] = useState<NativeAd | null>(null);
   const [isAdLoaded, setIsAdLoaded] = useState(false);
   const theme = useStyledTheme() as Theme;
+  const { isPremium } = usePremium();
 
   // Get provider immediately
   const adProvider = require('../../services/AdService').adService.getProvider();
+
 
   useEffect(() => {
     // Skip Google Ad load if using AppLovin
@@ -106,7 +109,10 @@ export const NativeAdCard = ({ variant = 'default', containerStyle }: NativeAdCa
     return () => {
       ad?.destroy();
     };
+
   }, [variant, adProvider]);
+
+  if (isPremium) return null;
 
   // --- AppLovin MREC Implementation ---
   if (adProvider === 'applovin') {

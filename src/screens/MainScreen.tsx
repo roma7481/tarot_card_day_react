@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled, { useTheme } from 'styled-components/native';
-import { View, TouchableOpacity, Text, SafeAreaView } from 'react-native';
+import { View, TouchableOpacity, Text, SafeAreaView, AppState } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Layers as StyleIcon, History } from 'lucide-react-native';
@@ -100,6 +100,7 @@ const FooterFn = styled.View`
   align-items: center;
   gap: 24px;
   margin-top: 32px;
+  margin-bottom: 100px;
 `;
 
 const InstructionText = styled.Text`
@@ -242,11 +243,22 @@ export default function MainScreen() {
         // But our sync service might need a slight update to handle "empty" explicitly 
         // OR we just sync the "Tap to Reveal" text.
         // Actually, let's just sync the "Tap to Reveal" title and no image.
-        await syncWidgetData("Tap to Reveal", "", new Date().toLocaleDateString(i18n.language, { weekday: 'long', month: 'short', day: 'numeric' }));
+        await syncWidgetData(t('main.tapToReveal') || "Tap to Reveal", "", new Date().toLocaleDateString(i18n.language, { weekday: 'long', month: 'short', day: 'numeric' }));
       }
     };
 
     syncCurrentState();
+
+    // Listen for AppState changes to re-sync when returning to app
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        syncCurrentState();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, [dailyCard, isToday, isLoading, i18n.language]);
 
   if (!fontsLoaded || isLoading) {
@@ -305,10 +317,6 @@ export default function MainScreen() {
                   <InstructionText>
                     {t('main.tapToReveal') || "Focus on your intention, then tap to reveal."}
                   </InstructionText>
-                  <DrawButton onPress={handleDraw}>
-                    <ButtonText>{t('main.tapToReveal')}</ButtonText>
-                    <StyleIcon color="#fff" size={20} />
-                  </DrawButton>
                 </FooterFn>
               </>
             ) : (

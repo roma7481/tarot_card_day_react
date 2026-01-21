@@ -28,6 +28,18 @@ export const usePremium = () => {
 
     const checkPremium = async () => {
         try {
+            // 0. Check Dev Override (For Testing)
+            if (__DEV__) {
+                const devOverride = await AsyncStorage.getItem('DEV_PREMIUM_OVERRIDE');
+                if (devOverride === 'true') {
+                    console.log('DEV: Premium Override Active');
+                    setIsPremium(true);
+                    adService.setPremium(true);
+                    setLoading(false);
+                    return;
+                }
+            }
+
             // 1. Check local cache first for speed
             // TEST MODE: Disable cache to force fresh check
             // const cached = await AsyncStorage.getItem('IS_PREMIUM_USER');
@@ -44,8 +56,7 @@ export const usePremium = () => {
             let hasPremium = false;
 
             purchases.forEach(purchase => {
-                // Ignore 'card_day_no_ads' for now to force testing of new premium flow
-                if (purchase.productId === 'card_day_premium') {
+                if (purchase.productId === 'card_day_premium' || purchase.productId === 'card_day_no_ads') {
                     hasPremium = true;
                 }
             });

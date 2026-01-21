@@ -26,12 +26,17 @@ const getPastDates = (years: number = 5): string[] => {
 };
 
 export const MigrationService = {
-    runMigration: async (tarotDb: SQLite.SQLiteDatabase, notesDb: SQLite.SQLiteDatabase) => {
+    needsMigration: async (): Promise<boolean> => {
+        const isDone = await AsyncStorage.getItem(MIGRATION_KEY);
+        return isDone !== 'true';
+    },
+
+    runMigration: async (tarotDb: SQLite.SQLiteDatabase, notesDb: SQLite.SQLiteDatabase): Promise<boolean> => {
         try {
             const isDone = await AsyncStorage.getItem(MIGRATION_KEY);
             if (isDone === 'true') {
                 console.log('[Migration] Already completed.');
-                return;
+                return false;
             }
 
             console.log('[Migration] Starting legacy history migration...');
@@ -106,9 +111,11 @@ export const MigrationService = {
 
             console.log(`[Migration] Finished. Migrated ${migratedCount} records.`);
             await AsyncStorage.setItem(MIGRATION_KEY, 'true');
+            return true;
 
         } catch (error) {
             console.error('[Migration] Failed:', error);
+            return false;
         }
     }
 };

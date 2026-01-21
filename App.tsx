@@ -2,9 +2,9 @@ import React from 'react';
 import { useFonts, Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 import './src/i18n'; // Initialize i18n
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, Layers, Notebook, Settings, Sparkles, BarChart3 } from 'lucide-react-native';
 import { useTheme as useStyledTheme } from 'styled-components/native';
 import * as Notifications from 'expo-notifications';
@@ -53,6 +53,7 @@ import { adService } from './src/services/AdService';
 function TabNavigator() {
   const theme = useStyledTheme();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
 
   // Initialize Ads on mount
   React.useEffect(() => {
@@ -71,9 +72,9 @@ function TabNavigator() {
           backgroundColor: theme.colors.background[0],
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          height: 85,
+          height: 60 + insets.bottom + 8,
           paddingTop: 10,
-          paddingBottom: 30,
+          paddingBottom: insets.bottom + 8,
           position: 'absolute',
           bottom: 0,
           left: 0,
@@ -139,12 +140,28 @@ import { analyticsService } from './src/services/AnalyticsService';
 function AppLayout() {
   const theme = useStyledTheme();
   const { t } = useTranslation();
-  const routeNameRef = React.useRef<string | undefined>();
+  const routeNameRef = React.useRef<string | undefined>(undefined);
   const navigationRef = React.useRef<any>(null);
+
+
+  const isDark = theme.colors.text !== '#334155';
+  const MyTheme = {
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDark ? DarkTheme.colors : DefaultTheme.colors),
+      primary: theme.colors.primary,
+      background: theme.colors.background[0],
+      card: theme.colors.surface,
+      text: theme.colors.text,
+      border: theme.colors.border,
+      notification: theme.colors.primary,
+    },
+  };
 
   return (
     <NavigationContainer
       ref={navigationRef}
+      theme={MyTheme}
       onReady={() => {
         routeNameRef.current = navigationRef.current.getCurrentRoute().name;
       }}
@@ -174,6 +191,8 @@ function AppLayout() {
   );
 }
 
+import { InitialLanguageModal } from './src/components/InitialLanguageModal'; // Add import
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     Manrope_400Regular,
@@ -182,37 +201,60 @@ export default function App() {
     Manrope_700Bold,
   });
 
-  // Restore Language
-  // Restore Language
+  const [isLanguageChecked, setIsLanguageChecked] = React.useState(false);
+  const [showLanguageModal, setShowLanguageModal] = React.useState(false);
+
+  // Restore Language & Init
   React.useEffect(() => {
-    // 1. Language
-    import('@react-native-async-storage/async-storage').then(async (m) => {
-      const savedLang = await m.default.getItem('user-language');
-      if (savedLang) {
-        import('./src/i18n').then(i18nModule => {
-          i18nModule.default.changeLanguage(savedLang);
-        });
-      }
-    });
+    async function initialize() {
+      // 1. Language
+      try {
+        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+        const savedLang = await AsyncStorage.getItem('user-language');
 
-    // 2. Analytics
-    import('./src/services/AnalyticsService').then(({ analyticsService }) => {
-      analyticsService.setCrashlyticsCollectionEnabled(true);
-      analyticsService.logEvent('app_open');
-    });
-
-    // 3. AdMob Consent
-    import('./src/services/AdMobService').then(({ adMobService }) => {
-      // Check consent (Production mode: no forced debug)
-      if (adService.getProvider() !== 'applovin') {
-        adMobService.checkConsent();
-      } else {
-        console.log('[App] AppLovin active, skipping AdMob consent.');
+        if (savedLang) {
+          const i18nModule = (await import('./src/i18n')).default;
+          await i18nModule.changeLanguage(savedLang);
+        } else {
+          setShowLanguageModal(true);
+        }
+      } catch (e) {
+        console.error("Failed to restore language", e);
+      } finally {
+        setIsLanguageChecked(true);
       }
-    });
+
+      // 2. Analytics
+      import('./src/services/AnalyticsService').then(({ analyticsService }) => {
+        analyticsService.setCrashlyticsCollectionEnabled(true);
+        analyticsService.logEvent('app_open');
+      });
+
+      // 3. AdMob Consent
+      import('./src/services/AdMobService').then(({ adMobService }) => {
+        // Check consent (Production mode: no forced debug)
+        if (adService.getProvider() !== 'applovin') {
+          adMobService.checkConsent();
+        } else {
+          console.log('[App] AppLovin active, skipping AdMob consent.');
+        }
+      });
+    }
+
+    initialize();
   }, []);
 
-  if (!fontsLoaded) {
+  const handleLanguageSelect = async (lang: string) => {
+    const i18nModule = (await import('./src/i18n')).default;
+    await i18nModule.changeLanguage(lang);
+
+    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+    await AsyncStorage.setItem('user-language', lang);
+
+    setShowLanguageModal(false);
+  };
+
+  if (!fontsLoaded || !isLanguageChecked) {
     return null;
   }
 
@@ -223,6 +265,7 @@ export default function App() {
           <ChatProvider>
             <MigrationWrapper>
               <AppLayout />
+              <InitialLanguageModal visible={showLanguageModal} onSelect={handleLanguageSelect} />
             </MigrationWrapper>
           </ChatProvider>
         </ThemeProvider>

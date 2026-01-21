@@ -1,10 +1,32 @@
-import analytics from '@react-native-firebase/analytics';
-import crashlytics from '@react-native-firebase/crashlytics';
+import {
+    getAnalytics,
+    logEvent,
+    setUserProperty,
+    setUserId,
+    logScreenView,
+    Analytics
+} from '@react-native-firebase/analytics';
+import {
+    getCrashlytics,
+    recordError,
+    log as crashlyticsLog,
+    setUserId as setCrashlyticsUserId,
+    setCrashlyticsCollectionEnabled,
+    Crashlytics
+} from '@react-native-firebase/crashlytics';
 
 class AnalyticsService {
+    private analytics: Analytics;
+    private crashlytics: Crashlytics;
+
+    constructor() {
+        this.analytics = getAnalytics();
+        this.crashlytics = getCrashlytics();
+    }
+
     async logEvent(name: string, params?: Record<string, any>) {
         try {
-            await analytics().logEvent(name, params);
+            await logEvent(this.analytics, name, params);
             console.log(`[Analytics] Event logged: ${name}`, params);
         } catch (error) {
             console.error(`[Analytics] Failed to log event ${name}:`, error);
@@ -13,7 +35,7 @@ class AnalyticsService {
 
     async logScreenView(screenName: string, screenClass: string) {
         try {
-            await analytics().logEvent('screen_view', {
+            await logScreenView(this.analytics, {
                 screen_name: screenName,
                 screen_class: screenClass,
             });
@@ -25,7 +47,7 @@ class AnalyticsService {
 
     async setUserProperty(name: string, value: string) {
         try {
-            await analytics().setUserProperty(name, value);
+            await setUserProperty(this.analytics, name, value);
         } catch (error) {
             console.error(`[Analytics] Failed to set user property ${name}:`, error);
         }
@@ -33,8 +55,8 @@ class AnalyticsService {
 
     async setUserId(id: string) {
         try {
-            await analytics().setUserId(id);
-            await crashlytics().setUserId(id);
+            await setUserId(this.analytics, id);
+            await setCrashlyticsUserId(this.crashlytics, id);
         } catch (error) {
             console.error(`[Analytics] Failed to set user ID:`, error);
         }
@@ -42,7 +64,7 @@ class AnalyticsService {
 
     recordError(error: Error, jsErrorName?: string) {
         try {
-            crashlytics().recordError(error, jsErrorName);
+            recordError(this.crashlytics, error, jsErrorName);
             console.log(`[Crashlytics] Error recorded:`, error);
         } catch (e) {
             console.error(`[Crashlytics] Failed to record error:`, e);
@@ -51,14 +73,14 @@ class AnalyticsService {
 
     log(message: string) {
         try {
-            crashlytics().log(message);
+            crashlyticsLog(this.crashlytics, message);
         } catch (error) {
             console.error(`[Crashlytics] Failed to log message:`, error);
         }
     }
 
     async setCrashlyticsCollectionEnabled(enabled: boolean) {
-        await crashlytics().setCrashlyticsCollectionEnabled(enabled);
+        await setCrashlyticsCollectionEnabled(this.crashlytics, enabled);
     }
 }
 

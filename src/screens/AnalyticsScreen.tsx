@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Text, Platform, StyleSheet } from 'react-native';
 import styled, { useTheme } from 'styled-components/native';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,7 +11,7 @@ import { getCardImage } from '../utils/cardImageMapping';
 import { CARD_NAME_MAPPING } from '../data/cardNameMapping';
 import { BarChart3, PieChart, TrendingUp, Lock } from 'lucide-react-native';
 import { usePremium } from '../hooks/usePremium';
-import { Platform, StyleSheet } from 'react-native';
+
 
 const Container = styled(LinearGradient)`
   flex: 1;
@@ -227,6 +227,58 @@ export default function AnalyticsScreen() {
                     </>
                 ) : (
                     <>
+                        {/* Streak & Activity */}
+                        <Section>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                                <View>
+                                    <SectionTitle style={{ marginBottom: 4 }}>{t('analytics.streak')}</SectionTitle>
+                                    <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                                        <Text style={{ fontSize: 32, fontFamily: 'Manrope_700Bold', color: theme.colors.primary, marginRight: 8 }}>
+                                            {stats.streak}
+                                        </Text>
+                                        <Text style={{ fontSize: 16, fontFamily: 'Manrope_500Medium', color: theme.colors.textSub }}>
+                                            {t('analytics.days')}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <TrendingUp size={32} color={theme.colors.primary} style={{ opacity: 0.8 }} />
+                            </View>
+
+                            <SectionTitle style={{ fontSize: 14, marginBottom: 12 }}>{t('analytics.activity')}</SectionTitle>
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 100, paddingBottom: 8 }}>
+                                {stats.last7Days.map((count: number, index: number) => {
+                                    // Calculate height percentage (max 7? or max of array)
+                                    const maxVal = Math.max(...stats.last7Days, 3); // min max is 3 to avoid flat
+                                    const h = (count / maxVal) * 100;
+
+                                    // Day label (e.g. M, T, W)
+                                    const d = new Date();
+                                    d.setDate(new Date().getDate() - (6 - index));
+                                    const dayLabel = d.toLocaleDateString(undefined, { weekday: 'narrow' });
+                                    const isToday = index === 6;
+
+                                    return (
+                                        <View key={index} style={{ alignItems: 'center', flex: 1 }}>
+                                            <View style={{
+                                                width: 8,
+                                                height: `${Math.max(h, 5)}%`,
+                                                backgroundColor: isToday ? theme.colors.primary : theme.colors.surface === '#ffffff' ? '#E2E8F0' : 'rgba(255,255,255,0.1)',
+                                                borderRadius: 4,
+                                                marginBottom: 8
+                                            }} />
+                                            <Text style={{
+                                                fontSize: 10,
+                                                fontFamily: 'Manrope_600SemiBold',
+                                                color: isToday ? theme.colors.primary : theme.colors.textSub
+                                            }}>
+                                                {dayLabel}
+                                            </Text>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        </Section>
+
                         {/* Major / Minor Balance */}
                         <Section>
                             <SectionTitle>{t('analytics.majorMinor')}</SectionTitle>
@@ -236,13 +288,32 @@ export default function AnalyticsScreen() {
                                     <BarLabel>{stats.minors} {t('analytics.minor')}</BarLabel>
                                 </View>
                                 <View style={{ flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden' }}>
-                                    <View style={{ flex: stats.majors, backgroundColor: theme.colors.gold }} />
-                                    <View style={{ flex: stats.minors, backgroundColor: theme.colors.textSub }} />
+                                    <View style={{ flex: stats.majors || 1, backgroundColor: theme.colors.gold }} />
+                                    <View style={{ flex: stats.minors || 1, backgroundColor: theme.colors.textSub }} />
                                 </View>
                                 <BarLabel style={{ marginTop: 8 }}>
                                     {stats.majors > stats.minors ? t('analytics.focusMajor') : t('analytics.focusMinor')}
                                 </BarLabel>
                             </BarContainer>
+                        </Section>
+
+                        {/* Numerology */}
+                        <Section>
+                            <SectionTitle>{t('analytics.numerology')}</SectionTitle>
+                            <View style={{ flexDirection: 'row', gap: 12 }}>
+                                <View style={{ flex: 1, backgroundColor: theme.colors.surface === '#ffffff' ? '#F8FAFC' : 'rgba(255,255,255,0.05)', padding: 12, borderRadius: 12, alignItems: 'center' }}>
+                                    <Text style={{ fontSize: 20, fontFamily: 'Manrope_700Bold', color: theme.colors.text, marginBottom: 4 }}>{stats.numerology.aces}</Text>
+                                    <Text style={{ fontSize: 12, fontFamily: 'Manrope_500Medium', color: theme.colors.textSub, textAlign: 'center' }}>{t('analytics.aces')}</Text>
+                                </View>
+                                <View style={{ flex: 1, backgroundColor: theme.colors.surface === '#ffffff' ? '#F8FAFC' : 'rgba(255,255,255,0.05)', padding: 12, borderRadius: 12, alignItems: 'center' }}>
+                                    <Text style={{ fontSize: 20, fontFamily: 'Manrope_700Bold', color: theme.colors.text, marginBottom: 4 }}>{stats.numerology.numbers}</Text>
+                                    <Text style={{ fontSize: 12, fontFamily: 'Manrope_500Medium', color: theme.colors.textSub, textAlign: 'center' }}>{t('analytics.numbers')}</Text>
+                                </View>
+                                <View style={{ flex: 1, backgroundColor: theme.colors.surface === '#ffffff' ? '#F8FAFC' : 'rgba(255,255,255,0.05)', padding: 12, borderRadius: 12, alignItems: 'center' }}>
+                                    <Text style={{ fontSize: 20, fontFamily: 'Manrope_700Bold', color: theme.colors.text, marginBottom: 4 }}>{stats.numerology.court}</Text>
+                                    <Text style={{ fontSize: 12, fontFamily: 'Manrope_500Medium', color: theme.colors.textSub, textAlign: 'center' }}>{t('analytics.court')}</Text>
+                                </View>
+                            </View>
                         </Section>
 
                         {/* Element Balance */}

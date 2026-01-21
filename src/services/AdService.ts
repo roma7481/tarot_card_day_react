@@ -245,6 +245,7 @@ class AdService {
     }
 
     public setPremium(isPremium: boolean) {
+        this.isPremium = isPremium;
         // If premium, we can stop loading/showing ads
         if (isPremium) {
             this.interstitialLoaded = false;

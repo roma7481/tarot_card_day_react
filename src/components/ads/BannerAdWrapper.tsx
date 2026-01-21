@@ -3,6 +3,7 @@ import { View, StyleProp, ViewStyle } from 'react-native';
 import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
 import AppLovinMAX, { AdFormat, AdView } from 'react-native-applovin-max';
 import { adService } from '../../services/AdService';
+import { usePremium } from '../../hooks/usePremium';
 
 interface Props {
     adMobUnitId: string;
@@ -11,7 +12,10 @@ interface Props {
 }
 
 export const BannerAdWrapper: React.FC<Props> = ({ adMobUnitId, appLovinUnitId, style }) => {
+    const { isPremium } = usePremium();
     const provider = adService.getProvider();
+
+    if (isPremium) return null;
 
     if (provider === 'applovin') {
         // AppLovin MAX Banner

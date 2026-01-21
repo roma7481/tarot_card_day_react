@@ -169,7 +169,7 @@ export const DeckScreen = () => {
       <Modal
         visible={!!selectedCardId}
         animationType="slide"
-        presentationStyle="fullScreen"
+        transparent={true}
         onRequestClose={handleCloseDetail}
       >
         {selectedCardId && (

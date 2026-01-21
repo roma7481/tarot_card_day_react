@@ -2,6 +2,7 @@ import React from 'react';
 import styled, { useTheme } from 'styled-components/native';
 import { TouchableOpacity, Alert } from 'react-native';
 import { Trash2, Edit2 } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 
 interface NoteItemProps {
     note: {
@@ -51,14 +52,15 @@ const NoteText = styled.Text`
 
 export const NoteItem: React.FC<NoteItemProps> = ({ note, onEdit, onDelete }) => {
     const theme = useTheme();
+    const { t } = useTranslation();
 
     const handleDelete = () => {
         Alert.alert(
-            "Delete Note",
-            "Are you sure you want to delete this note?",
+            t('notes.deleteTitle'),
+            t('notes.deleteConfirm'),
             [
-                { text: "Cancel", style: "cancel" },
-                { text: "Delete", style: "destructive", onPress: () => onDelete(note.note_id) }
+                { text: t('common.cancel'), style: "cancel" },
+                { text: t('notes.delete'), style: "destructive", onPress: () => onDelete(note.note_id) }
             ]
         );
     };

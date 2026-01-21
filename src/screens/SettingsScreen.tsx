@@ -10,10 +10,14 @@ import { useTranslation } from 'react-i18next';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import { useNotifications } from '../hooks/useNotifications';
-import { Clock, Info, Mail } from 'lucide-react-native';
+import { Clock, Info, Mail, Database, Upload, Download, Save } from 'lucide-react-native';
 import { OtherAppsCarousel } from '../components/OtherAppsCarousel';
 import * as Application from 'expo-application';
 import { usePremium } from '../hooks/usePremium';
+import { useDatabase } from '../data/DatabaseContext';
+import { DataBackupService } from '../services/DataBackupService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Device from 'expo-device';
 
 
 // --- Styled Components ---
@@ -218,18 +222,9 @@ const SettingsRow: React.FC<SettingsRowProps> = ({
   );
 };
 
-// --- Language Data ---
-const LANGUAGES = [
-  { code: 'en', label: 'English' },
-  { code: 'ru', label: 'Русский' },
-  { code: 'es', label: 'Español' },
-  { code: 'pt', label: 'Português' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'fr', label: 'Français' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'ja', label: '日本語' },
-  { code: 'pl', label: 'Polski' },
-];
+import { LANGUAGES } from '../i18n/languages';
+
+// --- Reusable Row Component ---
 
 export default function SettingsScreen() {
   const { top } = useSafeAreaInsets();
@@ -238,6 +233,17 @@ export default function SettingsScreen() {
   const { themeId, setThemeId, availableThemes, textSize, setTextSize } = useTheme();
   const { t, i18n } = useTranslation();
   const { isPremium } = usePremium();
+  const { notesDb } = useDatabase();
+
+  const handleBackup = async () => {
+    if (!notesDb) return;
+    await DataBackupService.createBackup(notesDb, t);
+  };
+
+  const handleRestore = async () => {
+    if (!notesDb) return;
+    await DataBackupService.restoreBackup(notesDb, t);
+  };
 
   // Notification Hook
   const { enabled: notificationsEnabled, time: notificationTime, toggleNotifications, updateTime } = useNotifications();
@@ -248,6 +254,7 @@ export default function SettingsScreen() {
   const [textSizeModalVisible, setTextSizeModalVisible] = useState(false);
   const [appInfoModalVisible, setAppInfoModalVisible] = useState(false);
   const [widgetHelpModalVisible, setWidgetHelpModalVisible] = useState(false);
+  const [backupHelpModalVisible, setBackupHelpModalVisible] = useState(false);
 
   const toggleLanguage = async (langCode: string) => {
     i18n.changeLanguage(langCode);
@@ -287,6 +294,24 @@ export default function SettingsScreen() {
       });
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleContactUs = async () => {
+    const subject = "Tarot Card of the day";
+    const body = `
+App version: ${Application.nativeApplicationVersion} (${Application.nativeBuildVersion})
+Platform: ${Platform.OS} ${Platform.Version}
+Device: ${Device.modelName || 'Unknown'}
+`;
+    // Encode for URL
+    const url = `mailto:cbeeapps@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    try {
+      await Linking.openURL(url);
+    } catch (e) {
+      console.error("Failed to open email", e);
+      Alert.alert(t('common.error'), "Could not open email client.");
     }
   };
 
@@ -430,6 +455,27 @@ export default function SettingsScreen() {
           />
         </SettingsGroup>
 
+        {/* Data Management Section */}
+        <SectionTitle>{t('settings.dataManagement')}</SectionTitle>
+        <SettingsGroup>
+          <SettingsRow
+            icon={<Upload color={theme.colors.primary} size={20} />}
+            label={t('settings.backup')}
+            onPress={handleBackup}
+          />
+          <SettingsRow
+            icon={<Download color={theme.colors.textSub} size={20} />}
+            label={t('settings.restore')}
+            onPress={handleRestore}
+          />
+          <SettingsRow
+            icon={<HelpCircle color="#F59E0B" size={20} />}
+            label={t('settings.backupHelp.title')}
+            isLast
+            onPress={() => setBackupHelpModalVisible(true)}
+          />
+        </SettingsGroup>
+
         {/* About Section */}
         <SectionTitle>{t('settings.about')}</SectionTitle>
         <SettingsGroup>
@@ -446,7 +492,7 @@ export default function SettingsScreen() {
           <SettingsRow
             icon={<Mail color="#10B981" size={20} />} // Emerald Green
             label={t('settings.contactUs')}
-            onPress={() => Linking.openURL('mailto:cbeeapps@gmail.com')}
+            onPress={handleContactUs}
           />
           <SettingsRow
             icon={<Shield color="#94A3B8" size={20} />}
@@ -611,7 +657,7 @@ export default function SettingsScreen() {
                 <View>
                   <ModalTitle>{t('widget.howToAdd')}</ModalTitle>
                   <View style={{ gap: 16 }}>
-                    {[1, 2, 3, 4, 5].map((step) => (
+                    {[1, 2, 3, 4, 5, 6].map((step) => (
                       <View key={step} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                         <View style={{
                           width: 24, height: 24, borderRadius: 12, backgroundColor: theme.colors.surface,
@@ -644,6 +690,134 @@ export default function SettingsScreen() {
             </TouchableWithoutFeedback>
           </ModalOverlay>
         </Modal>
+
+        {/* Backup Help Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={backupHelpModalVisible}
+          onRequestClose={() => setBackupHelpModalVisible(false)}
+        >
+          <ModalOverlay activeOpacity={1} onPress={() => setBackupHelpModalVisible(false)}>
+            <TouchableWithoutFeedback>
+              <ModalContent style={{ maxHeight: '80%' }}>
+                <View>
+                  <ModalTitle>{t('settings.backupHelp.title')}</ModalTitle>
+
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    <Text style={{
+                      color: theme.colors.textSub,
+                      fontFamily: 'Manrope_400Regular',
+                      fontSize: 14,
+                      marginBottom: 24,
+                      lineHeight: 22
+                    }}>
+                      {t('settings.backupHelp.intro')}
+                    </Text>
+
+                    {/* EXPORT SECTION */}
+                    <View style={{ marginBottom: 24 }}>
+                      <Text style={{
+                        color: theme.colors.primary,
+                        fontFamily: 'Manrope_700Bold',
+                        fontSize: 16,
+                        marginBottom: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center'
+                      }}>
+                        <Save size={16} color={theme.colors.primary} />
+                        {' ' + t('settings.backupHelp.exportTitle')}
+                      </Text>
+
+                      {[1, 2, 3, 4].map((step) => (
+                        <View key={`export-${step}`} style={{ flexDirection: 'row', marginBottom: 12, paddingRight: 16 }}>
+                          <View style={{
+                            width: 24, height: 24, borderRadius: 12, backgroundColor: theme.colors.surface,
+                            alignItems: 'center', justifyContent: 'center', marginRight: 12,
+                            borderWidth: 1, borderColor: theme.colors.border
+                          }}>
+                            <Text style={{ color: theme.colors.primary, fontFamily: 'Manrope_700Bold', fontSize: 12 }}>{step}</Text>
+                          </View>
+                          <Text style={{ color: theme.colors.text, fontFamily: 'Manrope_400Regular', fontSize: 14, flex: 1, lineHeight: 22 }}>
+                            {t(`settings.backupHelp.exportStep${step}`)}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* IMPORT SECTION */}
+                    <View style={{ marginBottom: 24 }}>
+                      <Text style={{
+                        color: theme.colors.primary,
+                        fontFamily: 'Manrope_700Bold',
+                        fontSize: 16,
+                        marginBottom: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center'
+                      }}>
+                        <Download size={16} color={theme.colors.primary} />
+                        {' ' + t('settings.backupHelp.importTitle')}
+                      </Text>
+
+                      {[1, 2, 3].map((step) => (
+                        <View key={`import-${step}`} style={{ flexDirection: 'row', marginBottom: 12, paddingRight: 16 }}>
+                          <View style={{
+                            width: 24, height: 24, borderRadius: 12, backgroundColor: theme.colors.surface,
+                            alignItems: 'center', justifyContent: 'center', marginRight: 12,
+                            borderWidth: 1, borderColor: theme.colors.border
+                          }}>
+                            <Text style={{ color: theme.colors.primary, fontFamily: 'Manrope_700Bold', fontSize: 12 }}>{step}</Text>
+                          </View>
+                          <Text style={{ color: theme.colors.text, fontFamily: 'Manrope_400Regular', fontSize: 14, flex: 1, lineHeight: 22 }}>
+                            {t(`settings.backupHelp.importStep${step}`)}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </ScrollView>
+
+                  <TouchableOpacity
+                    onPress={() => setBackupHelpModalVisible(false)}
+                    style={{
+                      marginTop: 16,
+                      backgroundColor: theme.colors.primary,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      alignItems: 'center'
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontFamily: 'Manrope_700Bold', fontSize: 16 }}>{t('common.ok')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </ModalContent>
+            </TouchableWithoutFeedback>
+          </ModalOverlay>
+        </Modal>
+
+        {/* DEV ONLY BUTTON */}
+        {__DEV__ && (
+          <View style={{ marginTop: 40, alignItems: 'center', opacity: 0.5 }}>
+            <TouchableOpacity
+              onPress={async () => {
+                const current = await AsyncStorage.getItem('DEV_PREMIUM_OVERRIDE');
+                const newVal = current === 'true' ? 'false' : 'true';
+                await AsyncStorage.setItem('DEV_PREMIUM_OVERRIDE', newVal);
+
+                // Update adService immediately
+                if (newVal === 'true') {
+                  import('../services/AdService').then(m => m.adService.setPremium(true));
+                } else {
+                  import('../services/AdService').then(m => m.adService.setPremium(false));
+                }
+
+                Alert.alert('Dev Mode', `Premium Override: ${newVal === 'true' ? 'ENABLED' : 'DISABLED'}.\n\nPlease restart the app or reload for full effect.`);
+              }}
+              style={{ backgroundColor: '#222', padding: 10, borderRadius: 8 }}
+            >
+              <Text style={{ color: 'magenta', fontSize: 12, fontWeight: 'bold' }}>DEV: TOGGLE PREMIUM</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
       </ContentContainer >
     </Container >

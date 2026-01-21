@@ -124,7 +124,7 @@ export const DeckStack: React.FC<Props> = ({ onPress }) => {
       {/* Active Card (The Deck Top) */}
       <TopCardContainer onTouchEnd={onPress}>
         <CardPattern
-          source={{ uri: "https://lh3.googleusercontent.com/aida-public/AB6AXuBV_mYOuV_uJ9lLhsg8i4BV2luTC21tKsidNU0RImJNG8mT12bi-gTOP7RnX0YTBrYsMBsKG3ombUmyXCNkZ5ceOGRvKug7x7WkAXRDTm5lqg7CsFpbnAm3rZDR-YX6aocW_uWG3fx1MLCjIpS145Z2hnVHNKTlsfgCx5_9rX-uj1JHBd5pUmlwEP55G-rokXa_WlMOWpM2euVGPSbVmLQfHgeNZsrH7FrwcrfGEt-5YbUq4KZXraWhT1JSzw2bwQ4x9aj_ItNnboYr" }}
+          source={require('../../assets/card_back_splash.png')}
           resizeMode="cover"
         >
           <LinearGradient

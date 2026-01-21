@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, KeyboardAvoidingView, Platform, TouchableOpacity, View, ScrollView } from 'react-native';
 import styled, { useTheme } from 'styled-components/native';
-import { X, Info, Check, Plus, ArrowRight, Sparkles } from 'lucide-react-native';
+import { X, Check, Plus, ArrowRight, Sparkles } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 
@@ -115,20 +115,7 @@ const SnippetTitle = styled.Text`
   font-size: 16px;
 `;
 
-const SnippetSub = styled.Text`
-  color: ${props => props.theme.colors.textSub};
-  font-family: 'Manrope_500Medium';
-  font-size: 12px;
-`;
 
-const InfoButton = styled.TouchableOpacity`
-  width: 32px;
-  height: 32px;
-  border-radius: 16px;
-  background-color: rgba(132, 169, 140, 0.1); /* Sage hint */
-  align-items: center;
-  justify-content: center;
-`;
 
 // -- Reflection Section --
 const ReflectionContainer = styled.View`
@@ -166,51 +153,7 @@ const PromptText = styled.Text`
   opacity: 0.8;
 `;
 
-// -- Mood Section --
-const MoodSection = styled.View`
-  margin-bottom: 32px;
-`;
-
-const SectionLabel = styled.Text`
-  color: ${props => props.theme.colors.textSub};
-  font-family: 'Manrope_600SemiBold';
-  font-size: 14px;
-  margin-bottom: 12px;
-`;
-
-const MoodRow = styled.View`
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const MoodChip = styled.TouchableOpacity<{ active: boolean }>`
-  height: 36px;
-  padding-horizontal: 16px;
-  border-radius: 18px;
-  flex-direction: row;
-  align-items: center;
-  background-color: ${props => props.active ? props.theme.colors.primary : 'rgba(255,255,255,0.05)'};
-  border-width: 1px;
-  border-color: ${props => props.active ? props.theme.colors.primary : 'rgba(255,255,255,0.1)'};
-`;
-
-const MoodText = styled.Text<{ active: boolean }>`
-  color: ${props => props.active ? '#fff' : props.theme.colors.textSub};
-  font-family: 'Manrope_600SemiBold';
-  font-size: 13px;
-`;
-
-const AddMoodButton = styled.TouchableOpacity`
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
-  background-color: rgba(255,255,255,0.05);
-  align-items: center;
-  justify-content: center;
-  border-width: 1px;
-  border-color: transparent; /* hover effect handled natively by touchable opacity */
-`;
+// ... (imports remain)
 
 // -- Input --
 const InputContainer = styled.View`
@@ -270,37 +213,25 @@ const SaveButtonText = styled.Text`
   font-size: 18px;
 `;
 
-
 export const JournalModal: React.FC<JournalModalProps> = ({
   visible, onClose, onSave, initialText = '', cardName, cardId, cardDescription
 }) => {
   const theme = useTheme();
   const { t, i18n } = useTranslation();
   const [text, setText] = useState(initialText);
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
   // Reset when opening
   useEffect(() => {
     if (visible) {
+      console.log('JournalModal opened with initialText:', initialText);
       setText(initialText);
-      // Try to extract mood if we saved it in text before? For now, reset.
-      setSelectedMood(null);
     }
   }, [visible, initialText]);
 
   const handleSave = () => {
-    // Optionally append mood to text if it's not already there?
-    // Or just pass it up. For simpler CRUD, we just save text.
-    // Let's create a formatted block for mood if selected.
-    let finalText = text;
-    if (selectedMood && !text.includes(`[Mood: ${selectedMood}]`)) {
-      finalText = `[Mood: ${selectedMood}]\n\n${text}`;
-    }
-    onSave(finalText, selectedMood || undefined);
+    onSave(text, undefined);
     onClose();
   };
-
-  const moods = ['Hopeful', 'Confused', 'Empowered', 'Anxious'];
 
   return (
     <Modal
@@ -316,7 +247,7 @@ export const JournalModal: React.FC<JournalModalProps> = ({
               <X color={theme.colors.textSub} size={24} />
             </CloseButton>
             <HeaderTitleContainer>
-              <HeaderSubtitle>{t('card.dailyReading') || 'Daily Reading'}</HeaderSubtitle>
+              <HeaderSubtitle>{t('journal.dailyReading')}</HeaderSubtitle>
               <HeaderDate>{new Date().toLocaleDateString(i18n.language, { month: 'long', day: 'numeric', year: 'numeric' })}</HeaderDate>
             </HeaderTitleContainer>
             <View style={{ width: 40 }} />
@@ -331,45 +262,22 @@ export const JournalModal: React.FC<JournalModalProps> = ({
                 <MiniCardImage source={getCardImage(cardId, i18n.language)} resizeMode="cover" />
                 <SnippetTextContainer>
                   <SnippetTitle>{cardName}</SnippetTitle>
-                  <SnippetSub>Upright • Reflection</SnippetSub>
                 </SnippetTextContainer>
-                <InfoButton>
-                  <Info size={18} color={theme.colors.primary} />
-                </InfoButton>
               </CardSnippet>
 
               <ReflectionContainer>
                 <ReflectionHeader>
                   <Sparkles size={16} color={theme.colors.primary} />
-                  <ReflectionLabel>Reflection</ReflectionLabel>
+                  <ReflectionLabel>{t('journal.reflection')}</ReflectionLabel>
                 </ReflectionHeader>
-                <QuestionText>What is this card trying to tell you today?</QuestionText>
-                <PromptText>Take a moment to connect with the imagery. How does the energy of {cardName} resonate with your current situation?</PromptText>
+                <QuestionText>{t('journal.reflectionQuestion')}</QuestionText>
+                <PromptText>{t('journal.reflectionPrompt', { cardName })}</PromptText>
               </ReflectionContainer>
-
-              <MoodSection>
-                <SectionLabel>How do you feel?</SectionLabel>
-                <MoodRow>
-                  {moods.map(mood => (
-                    <MoodChip
-                      key={mood}
-                      active={selectedMood === mood}
-                      onPress={() => setSelectedMood(mood === selectedMood ? null : mood)}
-                    >
-                      <MoodText active={selectedMood === mood}>{mood}</MoodText>
-                      {selectedMood === mood && <Check size={14} color="#fff" style={{ marginLeft: 6 }} />}
-                    </MoodChip>
-                  ))}
-                  <AddMoodButton>
-                    <Plus size={18} color={theme.colors.textSub} />
-                  </AddMoodButton>
-                </MoodRow>
-              </MoodSection>
 
               <InputContainer>
                 <StyledInput
                   multiline
-                  placeholder="Start writing your thoughts here..."
+                  placeholder={t('journal.placeholder')}
                   placeholderTextColor={theme.colors.textSub}
                   value={text}
                   onChangeText={setText}
@@ -379,7 +287,7 @@ export const JournalModal: React.FC<JournalModalProps> = ({
 
             <Footer pointerEvents="box-none">
               <SaveButton onPress={handleSave}>
-                <SaveButtonText>Save Entry</SaveButtonText>
+                <SaveButtonText>{t('journal.saveEntry')}</SaveButtonText>
                 <ArrowRight color="#fff" size={20} />
               </SaveButton>
             </Footer>

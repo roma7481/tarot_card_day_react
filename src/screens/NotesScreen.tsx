@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, FlatList, TouchableOpacity, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, FlatList, TouchableOpacity, LayoutAnimation, Platform, UIManager, Alert } from 'react-native';
 import styled, { useTheme as useStyledTheme } from 'styled-components/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
@@ -251,14 +251,28 @@ export default function NotesScreen() {
     }, [getAllNotes])
   );
 
-  const handleDelete = async (id: number, cardId: string) => {
-    await deleteNote(id, cardId);
-    getAllNotes();
+  const handleDelete = (id: number, cardId: string) => {
+    Alert.alert(
+      t('notes.deleteTitle'),
+      t('notes.deleteConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('notes.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            await deleteNote(id, cardId);
+            getAllNotes();
+          }
+        }
+      ]
+    );
   };
 
   const { canAccess } = useCanAccessNotes();
 
   const handleEdit = (note: Note) => {
+    console.log('Opening note (NotesScreen). Date:', note.date, 'TimeSaved:', note.timeSaved);
     if (!canAccess) {
       navigation.navigate('Paywall');
       return;
