@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tarot Card of the Day",
     "slug": "tarot_card_day",
-    "version": "7.6.0",
+    "version": "8.2.0",
     "orientation": "portrait",
     "icon": "./assets/playstore-icon.png",
     "userInterfaceStyle": "light",
@@ -21,7 +21,7 @@
       "bundleIdentifier": "com.tarotcardday.app"
     },
     "android": {
-      "versionCode": 76,
+      "versionCode": 82,
       "adaptiveIcon": {
         "foregroundImage": "./assets/playstore-icon.png",
         "backgroundColor": "#ffffff"
@@ -71,7 +71,9 @@
         }
       ],
       "./plugins/withFirebaseFixed",
-      "react-native-iap"
+      "./plugins/withAndroidSigning",
+      "react-native-iap",
+      "expo-font"
     ],
     "extra": {
       "eas": {

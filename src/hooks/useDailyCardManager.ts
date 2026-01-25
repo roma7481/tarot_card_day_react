@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import cardsData from '../data/cards.json';
 import { useNotesDatabase } from './useNotesDatabase';
 import { useHistory } from './useHistory';
@@ -80,6 +81,33 @@ export function useDailyCardManager() {
 
         fetchCardForDate();
     }, [viewDate, db, isReady, isTarotReady, getCardInterpretation]);
+
+    // Auto-refresh date on App Resume
+    const lastTodayRef = useRef(getTodayStr());
+
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', nextAppState => {
+            if (nextAppState === 'active') {
+                const nowToday = getTodayStr();
+                const oldToday = lastTodayRef.current;
+
+                if (nowToday !== oldToday) {
+                    console.log(`[DailyCard] Date changed in background! ${oldToday} -> ${nowToday}`);
+                    lastTodayRef.current = nowToday;
+
+                    // If user was viewing "Yesterday" (which was today), auto-forward them
+                    if (viewDate === oldToday) {
+                        console.log(`[DailyCard] Auto-updating view to new today.`);
+                        setViewDate(nowToday);
+                    }
+                }
+            }
+        });
+
+        return () => {
+            subscription.remove();
+        };
+    }, [viewDate]);
 
     const drawDailyCard = async () => {
         const todayStr = getTodayStr();

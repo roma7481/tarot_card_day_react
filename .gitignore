@@ -64,3 +64,5 @@ install-apk.sh
 *.py
 build-*.tar.gz
 package-lock 2.json
+*.keystore
+!debug.keystore

@@ -54,8 +54,11 @@ export const useNotes = () => {
     const addNote = useCallback(async (cardId: string, text: string, onSuccess?: () => void) => {
         if (!isReady || !db) return;
         const now = new Date();
-        // Store as YYYY-MM-DD to match legacy format
-        const dateStr = now.toISOString().split('T')[0];
+        // Store as YYYY-MM-DD in LOCAL TIME
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         const timeSaved = Math.floor(now.getTime() / 1000);
 
         try {

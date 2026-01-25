@@ -191,7 +191,11 @@ function AppLayout() {
   );
 }
 
-import { InitialLanguageModal } from './src/components/InitialLanguageModal'; // Add import
+import * as SplashScreen from 'expo-splash-screen';
+import { InitialLanguageModal } from './src/components/InitialLanguageModal';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -203,11 +207,13 @@ export default function App() {
 
   const [isLanguageChecked, setIsLanguageChecked] = React.useState(false);
   const [showLanguageModal, setShowLanguageModal] = React.useState(false);
+  const [appIsReady, setAppIsReady] = React.useState(false);
 
   // Restore Language & Init
   React.useEffect(() => {
     async function initialize() {
-      // 1. Language
+      // 1. Language - Try to load, but DON'T show modal yet if missing.
+      // We wait for MigrationWrapper to finish first.
       try {
         const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
         const savedLang = await AsyncStorage.getItem('user-language');
@@ -215,13 +221,11 @@ export default function App() {
         if (savedLang) {
           const i18nModule = (await import('./src/i18n')).default;
           await i18nModule.changeLanguage(savedLang);
-        } else {
-          setShowLanguageModal(true);
         }
       } catch (e) {
         console.error("Failed to restore language", e);
       } finally {
-        setIsLanguageChecked(true);
+        setIsLanguageChecked(true); // Helper flag to say "storage check done"
       }
 
       // 2. Analytics
@@ -232,17 +236,38 @@ export default function App() {
 
       // 3. AdMob Consent
       import('./src/services/AdMobService').then(({ adMobService }) => {
-        // Check consent (Production mode: no forced debug)
         if (adService.getProvider() !== 'applovin') {
           adMobService.checkConsent();
         } else {
           console.log('[App] AppLovin active, skipping AdMob consent.');
         }
       });
+
+      // 4. IAP Service (Init once)
+      import('./src/services/IAPService').then(({ iapService }) => {
+        iapService.initialize();
+      });
     }
 
     initialize();
   }, []);
+
+  // Effect to wait for critical resources
+  React.useEffect(() => {
+    if (fontsLoaded && isLanguageChecked) {
+      setAppIsReady(true);
+    }
+  }, [fontsLoaded, isLanguageChecked]);
+
+
+  const onLayoutRootView = React.useCallback(async () => {
+    if (appIsReady) {
+      // This tells the splash screen to hide immediately! If we call this after
+      // `setAppIsReady`, then we may see a blank screen while the app is
+      // rendering its initial state and asking them.
+      await SplashScreen.hideAsync();
+    }
+  }, [appIsReady]);
 
   const handleLanguageSelect = async (lang: string) => {
     const i18nModule = (await import('./src/i18n')).default;
@@ -254,16 +279,34 @@ export default function App() {
     setShowLanguageModal(false);
   };
 
-  if (!fontsLoaded || !isLanguageChecked) {
+  const handleMigrationComplete = async () => {
+    console.log('[App] Migration complete. Checking language requirements...');
+    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+    const savedLang = await AsyncStorage.getItem('user-language');
+
+    if (!savedLang) {
+      console.log('[App] No language found after migration. Showing modal.');
+      setShowLanguageModal(true);
+    } else {
+      console.log('[App] Language found after migration:', savedLang);
+      // Ensure i18n is synced if migration just set it
+      const i18nModule = (await import('./src/i18n')).default;
+      if (i18nModule.language !== savedLang) {
+        await i18nModule.changeLanguage(savedLang);
+      }
+    }
+  };
+
+  if (!appIsReady) {
     return null;
   }
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider onLayout={onLayoutRootView}>
       <DatabaseProvider>
         <ThemeProvider>
           <ChatProvider>
-            <MigrationWrapper>
+            <MigrationWrapper onMigrationComplete={handleMigrationComplete}>
               <AppLayout />
               <InitialLanguageModal visible={showLanguageModal} onSelect={handleLanguageSelect} />
             </MigrationWrapper>

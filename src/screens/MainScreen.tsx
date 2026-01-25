@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled, { useTheme } from 'styled-components/native';
-import { View, TouchableOpacity, Text, SafeAreaView, AppState } from 'react-native';
+import { View, TouchableOpacity, Text, SafeAreaView, AppState, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Layers as StyleIcon, History } from 'lucide-react-native';
@@ -17,6 +17,7 @@ import { Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncWidgetData } from '../services/WidgetSyncService';
 import { getCardImage } from '../utils/cardImageMapping';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 // --- Styled Components ---
 
@@ -261,7 +262,7 @@ export default function MainScreen() {
     };
   }, [dailyCard, isToday, isLoading, i18n.language]);
 
-  if (!fontsLoaded || isLoading) {
+  if (!fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: theme.colors.background[0] }} />;
   }
 
@@ -306,33 +307,44 @@ export default function MainScreen() {
         </View>
 
         <View style={{ flex: 1, width: '100%' }}>
-          {!dailyCard ? (
-            isToday ? (
-              // Case: Today, No Card Drawn -> Show Deck to Draw
-              <>
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                  <DeckStack onPress={handleDraw} />
-                </View>
-                <FooterFn>
-                  <InstructionText>
-                    {t('main.tapToReveal') || "Focus on your intention, then tap to reveal."}
-                  </InstructionText>
-                </FooterFn>
-              </>
-            ) : (
-              // Case: Past Day, No Card Drawn -> Show Empty Message
+          <Animated.View
+            key={`${currentDate}-${isLoading ? 'loading' : (dailyCard ? dailyCard.id : 'empty')}`}
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
+            style={{ flex: 1, width: '100%' }}
+          >
+            {isLoading ? (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ color: theme.colors.textSub, textAlign: 'center' }}>{t('main.noCardDrawn')}</Text>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
               </View>
-            )
-          ) : (
-            // Case: Card Exists (Today or Past) -> Show Revealed Card
-            <RevealedCard
-              card={{ ...dailyCard, description: dailyCard.description || '' }}
-              embed={true}
-              onBack={() => { }} // No-op for embed mode
-            />
-          )}
+            ) : !dailyCard ? (
+              isToday ? (
+                // Case: Today, No Card Drawn -> Show Deck to Draw
+                <>
+                  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <DeckStack onPress={handleDraw} />
+                  </View>
+                  <FooterFn>
+                    <InstructionText>
+                      {t('main.tapToReveal') || "Focus on your intention, then tap to reveal."}
+                    </InstructionText>
+                  </FooterFn>
+                </>
+              ) : (
+                // Case: Past Day, No Card Drawn -> Show Empty Message
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                  <Text style={{ color: theme.colors.textSub, textAlign: 'center' }}>{t('main.noCardDrawn')}</Text>
+                </View>
+              )
+            ) : (
+              // Case: Card Exists (Today or Past) -> Show Revealed Card
+              <RevealedCard
+                card={{ ...dailyCard, description: dailyCard.description || '' }}
+                embed={true}
+                onBack={() => { }} // No-op for embed mode
+              />
+            )}
+          </Animated.View>
         </View>
       </MainContent>
     </Container >

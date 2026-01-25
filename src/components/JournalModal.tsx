@@ -254,10 +254,11 @@ export const JournalModal: React.FC<JournalModalProps> = ({
           </Header>
 
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             style={{ flex: 1 }}
           >
-            <Content>
+            <Content contentContainerStyle={{ paddingBottom: 120 }}>
               <CardSnippet>
                 <MiniCardImage source={getCardImage(cardId, i18n.language)} resizeMode="cover" />
                 <SnippetTextContainer>

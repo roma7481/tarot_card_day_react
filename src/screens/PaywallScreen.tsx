@@ -7,16 +7,11 @@ import { X, Sparkles, Moon, Diamond, ArrowRight, Check, MessageCircle, BarChart2
 import { useNavigation } from '@react-navigation/native';
 import { darkTheme } from '../theme/colors';
 import { useTranslation } from 'react-i18next';
-import { initConnection, fetchProducts, requestPurchase, purchaseUpdatedListener, purchaseErrorListener, finishTransaction, endConnection, getAvailablePurchases, Product, Purchase, PurchaseError } from 'react-native-iap';
+import { Product } from 'react-native-iap';
+import { iapService } from '../services/IAPService';
 import { usePremium } from '../hooks/usePremium';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-
 const PRODUCT_ID_PREMIUM = 'card_day_premium';
-const ITEM_SKUS = Platform.select({
-    android: [PRODUCT_ID_PREMIUM],
-    ios: [PRODUCT_ID_PREMIUM],
-}) as string[];
 
 // ... Styled Components (Keep existing) ...
 const Container = styled(LinearGradient)`
@@ -256,89 +251,19 @@ export default function PaywallScreen() {
     const [purchasing, setPurchasing] = useState(false);
 
     useEffect(() => {
-        const initIAP = async () => {
-            try {
-                console.log('Initializing IAP connection...');
-                await initConnection();
-                console.log('IAP connected. Fetching products...', ITEM_SKUS);
-                const prods = await fetchProducts({ skus: ITEM_SKUS });
-                console.log('Fetched products:', JSON.stringify(prods, null, 2));
-                if (prods && prods.length > 0) {
-                    setProducts(prods);
-                } else {
-                    console.warn('No products fetched. Check Google Play Console configuration.');
-                }
-            } catch (err) {
-                console.warn('initIAP or fetchProducts error', err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        initIAP();
-
-        const purchaseUpdateSubscription = purchaseUpdatedListener(
-            async (purchase: Purchase) => {
-                // Receipt location varies by platform
-                const receipt = purchase.transactionReceipt;
-
-                if (receipt) {
-                    try {
-                        await finishTransaction({ purchase, isConsumable: false });
-                        await checkPremium();
-                        Alert.alert("Success", "Purchase successful!");
-                        navigation.goBack();
-                    } catch (ackErr) {
-                        console.warn('ackErr', ackErr);
-                    }
-                } else {
-                    // Android might not have transactionReceipt in the top level object in some versions?
-                    // Verify purchase.purchaseToken for android?
-                    // For now, if purchase exists, we try to finish it.
-                    try {
-                        await finishTransaction({ purchase, isConsumable: false });
-                        await checkPremium();
-                        Alert.alert("Success", "Purchase successful!");
-                        navigation.goBack();
-                    } catch (e) { console.warn(e) }
-                }
-            },
-        );
-
-        const purchaseErrorSubscription = purchaseErrorListener(
-            (error: PurchaseError) => {
-                console.warn('purchaseErrorSubscription', error);
-                setPurchasing(false);
-
-                // user-cancelled is common on iOS/Android newer versions
-                // E_USER_CANCELLED is RNIap standard
-                // 1 is Android responseCode for User Canceled
-                const code = error.code || error.responseCode;
-
-                if (
-                    code === 'user-cancelled' ||
-                    code === 'E_USER_CANCELLED' ||
-                    code === 1 ||
-                    error.message === 'User cancelled the operation'
-                ) {
-                    // User cancelled, do nothing
-                    return;
-                }
-
-                Alert.alert("Purchase Failed", error.message);
-            },
-        );
-
-        return () => {
-            if (purchaseUpdateSubscription) {
-                purchaseUpdateSubscription.remove();
-            }
-            if (purchaseErrorSubscription) {
-                purchaseErrorSubscription.remove();
-            }
-            endConnection();
-        };
+        loadData();
     }, []);
+
+    const loadData = async () => {
+        setLoading(true);
+        // Ensure products are fetched
+        await iapService.fetchProducts();
+        const prods = iapService.getProducts();
+        if (prods.length > 0) {
+            setProducts(prods);
+        }
+        setLoading(false);
+    };
 
     const handlePurchase = async () => {
         if (products.length === 0) {
@@ -355,14 +280,21 @@ export default function PaywallScreen() {
 
         setPurchasing(true);
         try {
-            // v14 request structure
             const sku = product.id || product.productId;
-            await requestPurchase({
-                request: {
-                    apple: { sku },
-                    google: { skus: [sku] }
-                }
-            });
+            await iapService.requestPurchase(sku);
+            // We don't await the result here because it comes via listener in IAPService
+            // But we need to reset purchasing state. 
+            // Ideally we should listen to IAPService events, but for now let's just 
+            // rely on the user coming back or the global listener alerting success.
+            // Actually, setPurchasing(false) might be premature if we do it immediately.
+            // But since we can't await the transaction finish here easily without refactoring strict event bus,
+            // we will leave it purchasing for a bit or until focus changes?
+            // Simplest: setPurchasing(false) after a delay or just let it spin until listener fires (but listener is in service).
+
+            // WORKAROUND: Global listener handles Success alert. We can just setPurchasing(false) after a timeout 
+            // or catch errors. 
+
+            setTimeout(() => setPurchasing(false), 5000); // Rough timeout
         } catch (err) {
             console.warn(err);
             setPurchasing(false);
@@ -372,10 +304,8 @@ export default function PaywallScreen() {
     const handleRestore = async () => {
         setPurchasing(true);
         try {
-            await initConnection(); // Ensure connected
-            const purchases = await getAvailablePurchases();
-            if (purchases.length > 0) {
-                await checkPremium();
+            const success = await iapService.restorePurchases();
+            if (success) {
                 Alert.alert("Restore Successful", "Your purchases have been restored.");
                 navigation.goBack();
             } else {
@@ -404,7 +334,7 @@ export default function PaywallScreen() {
         }
     }
 
-    const displayTitle = displayProduct ? displayProduct.title : t('paywall.pricing.badge');
+    // const displayTitle = displayProduct ? displayProduct.title : t('paywall.pricing.badge');
 
     return (
         <Container

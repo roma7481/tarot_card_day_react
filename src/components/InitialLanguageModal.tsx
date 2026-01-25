@@ -28,9 +28,7 @@ export const InitialLanguageModal: React.FC<InitialLanguageModalProps> = ({ visi
                     <Text style={[styles.title, { color: theme.colors.text }]}>
                         {t('settings.selectLanguage')}
                     </Text>
-                    <Text style={[styles.subtitle, { color: theme.colors.textSub }]}>
-                        Please choose your preferred language
-                    </Text>
+
 
                     <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
                         {LANGUAGES.map((lang, index) => (
@@ -94,7 +92,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     list: {
-        maxHeight: 400,
+        maxHeight: 650,
     },
     option: {
         flexDirection: 'row',

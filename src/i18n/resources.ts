@@ -74,7 +74,8 @@ export const resources = {
                 errorSave: "Failed to save settings.",
                 cancel: "Cancel",
                 ok: "OK",
-                optimizing: "Optimizing your experience..."
+                optimizing: "Optimizing your experience...",
+                chooseLanguage: "Please choose your preferred language"
             },
             widget: {
                 title: "Widget Setup",
@@ -172,6 +173,7 @@ export const resources = {
                 textSmall: "Small",
                 textMedium: "Medium (Default)",
                 textLarge: "Large",
+                cardStyle: "Card Style",
             },
             tags: {
                 intuition: "Intuition",
@@ -366,7 +368,8 @@ export const resources = {
                 saving: "Сохранение...",
                 errorSave: "Не удалось сохранить настройки.",
                 cancel: "Отмена",
-                optimizing: "Оптимизация вашего опыта..."
+                optimizing: "Оптимизация вашего опыта...",
+                chooseLanguage: "Пожалуйста, выберите предпочтительный язык"
             },
             widget: {
                 title: "Настройка виджета",
@@ -580,7 +583,8 @@ export const resources = {
                 home: "Inicio",
                 deck: "Mazo",
                 notes: "Notas",
-                settings: "Ajustes"
+                settings: "Ajustes",
+                analytics: "Analítica"
             },
             settings: {
                 title: "Ajustes",
@@ -644,7 +648,8 @@ export const resources = {
                 saving: "Guardando...",
                 errorSave: "Error al guardar la configuración.",
                 cancel: "Cancelar",
-                optimizing: "Optimizando tu experiencia..."
+                optimizing: "Optimizando tu experiencia...",
+                chooseLanguage: "Por favor, elige tu idioma preferido"
             },
             widget: {
                 title: "Configuración del Widget",
@@ -855,7 +860,8 @@ export const resources = {
                 home: "Início",
                 deck: "Baralho",
                 notes: "Notas",
-                settings: "Configurações"
+                settings: "Configurações",
+                analytics: "Analítica"
             },
             settings: {
                 title: "Configurações",
@@ -913,7 +919,8 @@ export const resources = {
                 errorSave: "Falha ao salvar configurações.",
                 cancel: "Cancelar",
                 ok: "OK",
-                optimizing: "Otimizando sua experiência..."
+                optimizing: "Otimizando sua experiência...",
+                chooseLanguage: "Por favor, escolha seu idioma preferido"
             },
             widget: {
                 title: "Configuração do Widget",
@@ -1122,7 +1129,8 @@ export const resources = {
                 home: "Home",
                 deck: "Mazzo",
                 notes: "Note",
-                settings: "Impostazioni"
+                settings: "Impostazioni",
+                analytics: "Analisi"
             },
             settings: {
                 title: "Impostazioni",
@@ -1180,7 +1188,8 @@ export const resources = {
                 errorSave: "Impossibile salvare le impostazioni.",
                 cancel: "Annulla",
                 ok: "OK",
-                optimizing: "Ottimizzazione della tua esperienza..."
+                optimizing: "Ottimizzazione della tua esperienza...",
+                chooseLanguage: "Per favore, scegli la tua lingua preferita"
             },
             widget: {
                 title: "Configurazione Widget",
@@ -1389,7 +1398,8 @@ export const resources = {
                 home: "Accueil",
                 deck: "Jeu",
                 notes: "Notes",
-                settings: "Paramètres"
+                settings: "Paramètres",
+                analytics: "Analyses"
             },
             settings: {
                 title: "Paramètres",
@@ -1447,7 +1457,8 @@ export const resources = {
                 errorSave: "Échec de l'enregistrement des paramètres.",
                 cancel: "Annuler",
                 ok: "OK",
-                optimizing: "Optimisation de votre expérience..."
+                optimizing: "Optimisation de votre expérience...",
+                chooseLanguage: "Veuillez choisir votre langue préférée"
             },
             widget: {
                 title: "Configuration Widget",
@@ -1656,7 +1667,8 @@ export const resources = {
                 home: "Start",
                 deck: "Deck",
                 notes: "Notizen",
-                settings: "Einstellungen"
+                settings: "Einstellungen",
+                analytics: "Analysen"
             },
             settings: {
                 title: "Einstellungen",
@@ -1714,7 +1726,8 @@ export const resources = {
                 errorSave: "Einstellungen konnten nicht gespeichert werden.",
                 cancel: "Abbrechen",
                 ok: "OK",
-                optimizing: "Optimierung Ihres Erlebnisses..."
+                optimizing: "Optimierung Ihres Erlebnisses...",
+                chooseLanguage: "Bitte wählen Sie Ihre bevorzugte Sprache"
             },
             widget: {
                 title: "Widget-Einrichtung",
@@ -1923,7 +1936,8 @@ export const resources = {
                 home: "ホーム",
                 deck: "デッキ",
                 notes: "メモ",
-                settings: "設定"
+                settings: "設定",
+                analytics: "分析"
             },
             settings: {
                 title: "設定",
@@ -1981,7 +1995,8 @@ export const resources = {
                 errorSave: "設定の保存に失敗しました。",
                 cancel: "キャンセル",
                 ok: "OK",
-                optimizing: "体験を最適化中..."
+                optimizing: "体験を最適化中...",
+                chooseLanguage: "好みの言語を選択してください"
             },
             widget: {
                 title: "ウィジェット設定",
@@ -2190,7 +2205,8 @@ export const resources = {
                 home: "Główna",
                 deck: "Talia",
                 notes: "Notatki",
-                settings: "Ustawienia"
+                settings: "Ustawienia",
+                analytics: "Analityka"
             },
             settings: {
                 title: "Ustawienia",
@@ -2248,7 +2264,8 @@ export const resources = {
                 errorSave: "Nie udało się zapisać ustawień.",
                 cancel: "Anuluj",
                 ok: "OK",
-                optimizing: "Optymalizacja twojego doświadczenia..."
+                optimizing: "Optymalizacja twojego doświadczenia...",
+                chooseLanguage: "Proszę wybrać preferowany język"
             },
             widget: {
                 title: "Konfiguracja Widżetu",

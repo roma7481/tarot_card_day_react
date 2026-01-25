@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import styled, { useTheme as useStyledTheme } from 'styled-components/native';
+import { useTheme as useAppContext } from '../theme/ThemeContext';
+import { availableCardBacks, defaultCardBackId } from '../theme/cardBacks';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -82,6 +84,9 @@ interface Props {
 
 export const DeckStack: React.FC<Props> = ({ onPress }) => {
   const theme = useStyledTheme();
+  const { cardBack } = useAppContext();
+
+  const selectedCardBack = availableCardBacks.find(cb => cb.id === cardBack) || availableCardBacks.find(cb => cb.id === defaultCardBackId);
 
   // Animation Values
   const pulseScale = useSharedValue(1);
@@ -124,7 +129,7 @@ export const DeckStack: React.FC<Props> = ({ onPress }) => {
       {/* Active Card (The Deck Top) */}
       <TopCardContainer onTouchEnd={onPress}>
         <CardPattern
-          source={require('../../assets/card_back_splash.png')}
+          source={selectedCardBack?.source}
           resizeMode="cover"
         >
           <LinearGradient

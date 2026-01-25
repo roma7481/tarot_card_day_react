@@ -54,9 +54,13 @@ export const useTarotDatabase = () => {
         if (!db || !isReady) return null;
 
         try {
-            const lang = i18n.language;
+            const rawLang = i18n.language;
+            const lang = rawLang.split('-')[0];
             const tableName = TABLE_MAPPINGS[lang] || TABLE_MAPPINGS['en'];
             const columnMap = COLUMN_MAPPINGS[lang] || COLUMN_MAPPINGS['en'];
+
+            // System log to debug table selection
+            // console.log(`[TarotDB] Lookup: ${rawLang} -> ${lang} -> using ${tableName}`);
 
             // Should always exist now
             const nameLookupCol = NAME_LOOKUP_COLUMNS[lang] || NAME_LOOKUP_COLUMNS['en'];

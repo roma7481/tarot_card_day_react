@@ -19,7 +19,7 @@ const LoadingText = styled.Text`
     font-family: 'Manrope_500Medium';
 `;
 
-export const MigrationWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const MigrationWrapper: React.FC<{ children: React.ReactNode, onMigrationComplete?: () => void }> = ({ children, onMigrationComplete }) => {
     const { tarotDb, notesDb, isTarotReady, isNotesReady } = useDatabase();
     const [isMigrating, setIsMigrating] = useState(false);
     const { t } = useTranslation();
@@ -36,7 +36,10 @@ export const MigrationWrapper: React.FC<{ children: React.ReactNode }> = ({ chil
                         console.error("Migration failed:", e);
                     } finally {
                         setIsMigrating(false);
+                        onMigrationComplete?.();
                     }
+                } else {
+                    onMigrationComplete?.();
                 }
             }
         };

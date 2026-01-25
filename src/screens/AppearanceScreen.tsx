@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, TouchableOpacity, ScrollView } from 'react-native';
+import { View, TouchableOpacity, ScrollView, ImageBackground } from 'react-native';
 import styled, { useTheme } from 'styled-components/native'; // Styled Components theme
 import { useTheme as useAppTheme } from '../theme/ThemeContext'; // App Logic
+import { availableCardBacks } from '../theme/cardBacks';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Check, Type, ArrowLeft } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -59,7 +60,8 @@ const SectionTitle = styled.Text`
 const ThemeGrid = styled.View`
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 16px;
+    justify-content: space-between;
+    row-gap: 16px;
 `;
 
 const ThemeCard = styled.TouchableOpacity<{ isSelected: boolean }>`
@@ -115,9 +117,17 @@ const SizeLabel = styled.Text`
     flex: 1;
 `;
 
+// DeckStack style replication
+const InnerBorder = styled.View`
+  position: absolute;
+  inset: 6px;
+  border: 4px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+`;
+
 export default function AppearanceScreen() {
     const theme = useTheme(); // Styled theme
-    const { themeId, setThemeId, availableThemes, textSize, setTextSize } = useAppTheme(); // Logic
+    const { themeId, setThemeId, availableThemes, textSize, setTextSize, cardBack, setCardBack } = useAppTheme(); // Logic
     const navigation = useNavigation();
     const { top } = useSafeAreaInsets();
     const { t } = useTranslation();
@@ -156,6 +166,50 @@ export default function AppearanceScreen() {
                                         </CheckCircle>
                                     )}
                                 </ThemePreview>
+                            </ThemeCard>
+                        ))}
+                    </ThemeGrid>
+                </Section>
+
+                <Section>
+                    <SectionTitle>{t('appearance.cardStyle')}</SectionTitle>
+                    <ThemeGrid>
+                        {availableCardBacks.map((cb) => (
+                            <ThemeCard
+                                key={cb.id}
+                                isSelected={cardBack === cb.id}
+                                onPress={() => setCardBack(cb.id)}
+                                style={{ width: '48%', aspectRatio: 200 / 320 }}
+                            >
+                                <View style={{ flex: 1, width: '100%' }}>
+                                    <ImageBackground
+                                        source={cb.source}
+                                        style={{ flex: 1, width: '100%', height: '100%' }}
+                                        resizeMode="cover"
+                                    >
+                                        <LinearGradient
+                                            colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(255,255,255,0.1)']}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <InnerBorder />
+                                    </ImageBackground>
+                                    {cardBack === cb.id && (
+                                        <View style={{
+                                            position: 'absolute',
+                                            top: 8,
+                                            right: 8,
+                                            backgroundColor: theme.colors.gold,
+                                            width: 24,
+                                            height: 24,
+                                            borderRadius: 12,
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            zIndex: 10
+                                        }}>
+                                            <Check size={14} color="#fff" strokeWidth={3} />
+                                        </View>
+                                    )}
+                                </View>
                             </ThemeCard>
                         ))}
                     </ThemeGrid>

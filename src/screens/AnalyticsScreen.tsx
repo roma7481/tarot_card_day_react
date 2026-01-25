@@ -159,10 +159,15 @@ const MostDrawnCount = styled.Text`
     font-size: 14px;
 `;
 
+import { TranslateCardName } from '../components/TranslateCardName';
+import { useDatabase } from '../data/DatabaseContext';
+
+
 export default function AnalyticsScreen() {
+    const { tarotDb } = useDatabase(); // Needed for component
     const { top } = useSafeAreaInsets();
     const theme = useTheme();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const navigation = useNavigation();
     const { isPremium } = usePremium();
     const { getHistory, isReady } = useHistory();
@@ -372,7 +377,16 @@ export default function AnalyticsScreen() {
                                 <MostDrawnContainer>
                                     <MostDrawnImage source={getCardImage(stats.mostDrawn, 'en')} />
                                     <MostDrawnInfo>
-                                        <MostDrawnName>{stats.mostDrawnName || CARD_NAME_MAPPING[stats.mostDrawn]}</MostDrawnName>
+                                        <TranslateCardName
+                                            id={stats.mostDrawn}
+                                            fallback={stats.mostDrawnName}
+                                            style={{
+                                                color: theme.colors.text,
+                                                fontFamily: 'Manrope_700Bold',
+                                                fontSize: 18,
+                                                marginBottom: 4
+                                            }}
+                                        />
                                         <MostDrawnCount>{t('analytics.drawnTimes', { count: stats.mostDrawnCount })}</MostDrawnCount>
                                     </MostDrawnInfo>
                                 </MostDrawnContainer>
